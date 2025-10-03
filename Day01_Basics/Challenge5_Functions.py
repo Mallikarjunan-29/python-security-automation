@@ -9,38 +9,41 @@ def check_ip(ip):
      else:
           return "Block"
      
-def summarize(AllowedIPs,BlockedIPs,TotalIPs,Allowcount,BlockCount):
+def summarize(AllowedIPs,BlockedIPs,SuspiciousIPs,TotalIPs):
     print(Fore.BLACK)
-    print(f"{Allowcount} IPs allowed and {BlockCount} IPs are blocked")
-    print(f"Allowed IPs \n {AllowedIPs}")
-    print(f"Blocked IPs \n {BlockedIPs}")
-    print(f"Total IPs Processed: \n {len(TotalIPs)}")
-    print(f"List of IPs Processed:\n{TotalIPs}")
-    print(f"{len(AllowedIPs)} IPs allowed and {len(BlockedIPs)} Blocked")
+    print(f"{len(AllowedIPs)} IPs allowed and {len(BlockedIPs)} IPs are blocked")
+    print(f"\nAllowed IPs \n")
+    print_list(AllowedIPs.keys())
+    print(f"\nBlocked IPs \n")
+    print_list(BlockedIPs.keys())
+    print(f"\nSuspicious IPs \n")
+    print_list(SuspiciousIPs)
+    print(f"\nTotal IPs Processed: \n {len(TotalIPs)}")
+    print(f"\nList of IPs Processed:\n")
+    print_list(TotalIPs.keys())
     TopBlockedIps=get_sorted_ips(BlockedIPs,3)
-    print(f"Top IPs blocked:")
-    for n in TopBlockedIps:
+    print(f"\nTop IPs blocked:")
+    print_list(TopBlockedIps)
+
+def print_list(ips):
+    for n in ips:
         print(n)
-    
+
 def get_sorted_ips(blocked_ips,n=2):
     blocked_ips=list(dict(sorted(blocked_ips.items(),key=operator.itemgetter(1),reverse=True)).keys())
     return blocked_ips[:n]
 
 def process_summary(ips):
-    Allowcount=0
-    BlockCount=0    
     AllowedIPs= []
     BlockedIPs=[]
-    TopIPsBlocked=[]
     TotalIPs={}
+    SuspiciousIPs=[]
 
     for ip in ips:  
         if "Allow" in check_ip(ip):
-            Allowcount+=1
             AllowedIPs.append(ip)
             
         else:
-            BlockCount+=1
             BlockedIPs.append(ip)
     TotalIPs=dict(Counter(ips))
     #AllowedIPs={i:AllowedIPs.count(i) for i in AllowedIPs}
@@ -49,9 +52,15 @@ def process_summary(ips):
     BlockedIPs = dict(Counter(BlockedIPs))
     #BlockedIPs=list(dict(sorted(BlockedIPs.items(),key=operator.itemgetter(1),reverse=True)).keys())
     #BlockedIPs=list(SortedBlockedIps.keys())
-    summarize(AllowedIPs,BlockedIPs,TotalIPs,Allowcount,BlockCount)
+    # Determining suspicious IPs
+    for keys,values in AllowedIPs.items():
+        if values>2:
+            SuspiciousIPs.append(keys)
+    for items in SuspiciousIPs:
+        del(AllowedIPs[items])
+    summarize(AllowedIPs,BlockedIPs,SuspiciousIPs,TotalIPs)
 
-if __name__ =="__main__":
-    ips=['192.168.10.1','172.16.10.10','10.10.10.10','1.1.1.1','8.8.8.8','8.8.8.8','20.20.20.20','20.20.20.20','8.8.8.8','20.25.20.20']
-    process_summary(ips)
+#if __name__ =="__main__":
+#    ips=['192.168.10.1','172.16.10.10','10.10.10.10','1.1.1.1','8.8.8.8','8.8.8.8','20.20.20.20','20.20.20.20','8.8.8.8','20.25.20.20']
+#    process_summary(ips)
                
