@@ -4,3 +4,4 @@ venv/
 logs/
 *.env
 Roadmap/
+output/
