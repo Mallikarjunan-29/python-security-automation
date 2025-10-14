@@ -3,16 +3,22 @@ import requests
 import pandas
 import logging
 import ipaddress
+import time
+from dotenv import load_dotenv
+log_timestamp= time.strftime("%Y-%m-%d")
+base_path=os.getcwd()
+log_path=os.path.join(base_path,"logs")
+os.makedirs(log_path,exist_ok=True)
+file_name=f"log_{log_timestamp}"
+file_path=os.path.join(log_path,file_name)
 logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler("logs/enrichment.log"),
+                logging.FileHandler(file_path),
                 logging.StreamHandler()
             ]
         )
-import time
-from dotenv import load_dotenv
 logger=logging.getLogger(__name__)
 class IOCEnricher:    
     def __init__(self):
@@ -117,10 +123,9 @@ class IOCEnricher:
                 print(ioc_results)
             if len(ioc_results)>0:
                 df= pandas.DataFrame(ioc_results)
-                base_path=os.getcwd()
                 timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
-                output_path=os.join(base_path,"output")
-                os.makedirs(output_path,exists_ok=True)
+                output_path=os.path.join(base_path,"output")
+                os.makedirs(output_path,exist_ok=True)
                 file_name=f"IOC_Enriched_{timestamp}"
                 df.to_csv(os.path.join(output_path,file_name),index=False)
             else:
