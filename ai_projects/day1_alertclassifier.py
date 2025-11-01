@@ -4,19 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import json
-
-#Result Dictionary
-result ={}
-#Sample alert
-alert = {
-    "user": "alice@company.com",
-    "source_ip": "209.94.90.1",
-    "failed_logins": 8,
-    "success": True,
-    "time": "02:00",
-    "location": "San Francisco, CA"
-    }
-    
+import time
 
 def build_prompt(alert):
     """
@@ -52,16 +40,32 @@ Classify as :
 """
     return prompt
 
-def classify_alert(alert):
+def classify_alert(alert,max_retries=3):
     """
     Alert -> AI -> classification
     """
-    gemini_key=os.getenv('GEMINIKEY')
-    client=genai.Client(api_key=gemini_key)
-    response=client.models.generate_content(
-        model='gemini-2.5-flash',contents=build_prompt(alert)
-    )
-    return response.text
+    for attempts in range(max_retries):
+        try:
+            gemini_key=os.getenv('GEMINIKEY')
+            client=genai.Client(api_key=gemini_key)
+            response=client.models.generate_content(
+                model='gemini-2.0-flash',contents=build_prompt(alert)
+            )
+            token_data={
+                "PromptToken":getattr(response.usage_metadata,"prompt_token_count",0),
+                "TotalToken":getattr(response.usage_metadata,"total_token_count",0),
+                "CandidateToken":getattr(response.usage_metadata,"candidates_token_count",0),
+                "ToolUsePromptToken":getattr(response.usage_metadata,"tool_use_prompt_token_count",0),
+                "CacheToken":getattr(response.usage_metadata,"cache_token_count",0)
+            }
+            return response.text,token_data
+        except Exception as e:
+            if attempts < max_retries - 1:
+                print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
+                time.sleep(2**attempts)
+                continue
+            return None
+
 
 def parse_alert_json(ai_output):
     """
@@ -79,3 +83,12 @@ def parse_alert_json(ai_output):
         print(e)
         return None
 
+def calculate_cost(token):
+    try:
+        prompt_token_cost=0.03 #$ per 1000 tokens
+        output_token_cost=0.06 #$ per 1000 tokens
+        total_cost=prompt_token_cost*token["PromptToken"]/1000 + output_token_cost*token["CandidateToken"]/1000
+        return total_cost
+    except Exception as e:
+        print(e)
+        return None
