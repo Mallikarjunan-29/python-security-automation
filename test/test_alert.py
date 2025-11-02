@@ -56,6 +56,7 @@ for alerts in test_cases:
                 if result_json:
                     print(f"Classification: {result_json['classification']}\n")
                     print(f"Confidence: {result_json['confidence']}\n")
+                    print(f"ThreatIntel: {result_json['ThreatIntel']}\n")
                     print(f"Reasoning: {result_json['reasoning']}\n")
                 else:
                     print("No Response")

@@ -5,8 +5,14 @@ load_dotenv()
 import re
 import json
 import time
+import sys
+from ai_projects import day2_threatintel
+sys.path.append(os.getcwd())
+from src import logger_config
+from src.logger_config import get_logger
+logger=get_logger(__name__)
 
-def build_prompt(alert):
+def build_prompt(alert,abuse_response,vt_response):
     """
     Takes Alert dictionary and builds a prompt
     """
@@ -20,6 +26,10 @@ Analyze this login alert
 - Time of activity: {alert['time']}
 - IP location: {alert['location']}
 
+This is what the threat intel feeds say about the IP
+AbuseIPDB:{abuse_response}
+VirusTotal:{vt_response}
+
 Is this suspicious?
 Classify as :
  - TRUE_POSITIVE (real attack)
@@ -29,12 +39,13 @@ Classify as :
  Think step by step and then provide:
  1. Classification
  2. Confidence Score (0-100%)
- 3. Reasoning
+ 3. Reasoning - Use Threat Intel enrichment provided as well to arrive at your result.
  
  Format as Json:
  {{
     "classification":"TRUE_POSITIVE",
     "confidence":95,
+    "ThreatIntel":What do the Threat intel feeds say
     "reasoning": "8 failures at 2:00 AM indicate brute force"
  }}
 """
@@ -42,14 +53,15 @@ Classify as :
 
 def classify_alert(alert,max_retries=3):
     """
-    Alert -> AI -> classification
+    Alert -> Threat Intel -> AI -> classification
     """
+    abuse_response,vt_response=day2_threatintel.ip_lookup(alert['source_ip'])
     for attempts in range(max_retries):
         try:
             gemini_key=os.getenv('GEMINIKEY')
             client=genai.Client(api_key=gemini_key)
             response=client.models.generate_content(
-                model='gemini-2.0-flash',contents=build_prompt(alert)
+                model='gemini-2.5-flash',contents=build_prompt(alert,abuse_response,vt_response)
             )
             token_data={
                 "PromptToken":getattr(response.usage_metadata,"prompt_token_count",0),
@@ -64,6 +76,7 @@ def classify_alert(alert,max_retries=3):
                 print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
                 time.sleep(2**attempts)
                 continue
+            logger.error(e)
             return None
 
 
@@ -80,7 +93,7 @@ def parse_alert_json(ai_output):
         else:
             return None   
     except Exception as e:
-        print(e)
+        logger.error(e)
         return None
 
 def calculate_cost(token):
@@ -90,5 +103,6 @@ def calculate_cost(token):
         total_cost=prompt_token_cost*token["PromptToken"]/1000 + output_token_cost*token["CandidateToken"]/1000
         return total_cost
     except Exception as e:
-        print(e)
+        logger.error(e)
         return None
+
