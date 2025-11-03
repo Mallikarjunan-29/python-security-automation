@@ -35,14 +35,13 @@ def abuseip_lookup(ip,maxretries=3):
                 'Accept':'application/json',
                 'KEY':abuse_key
             }
-            abuse_response=requests.get(abuse_url,headers=header,params=querystring) #AbuseIPDB API call
+            abuse_response=requests.get(abuse_url,headers=header,params=querystring,timeout=10) #AbuseIPDB API call
             abuse_response.raise_for_status() # Throws error for all codes >400
             if abuse_response.status_code==200:
                 abuse_json=abuse_response.json()
                 abuse_data=abuse_json.get("data","")
                 abuse_dict={
                     "IP":abuse_data.get("ipAddress",""),
-                    "Country":abuse_data.get("countryCode",""),
                     "UsageType":abuse_data.get("usageType",""),
                     "ISP":abuse_data.get("isp",""),
                     "ISTor":abuse_data.get("isTor",""),
@@ -83,18 +82,19 @@ def vtip_lookup(ip,maxretries=3):
             headers = {"accept": "application/json",
                        "x-apikey":vt_key}
 
-            vt_response=requests.get(abuse_url,headers=headers) #VT API call
+            vt_response=requests.get(abuse_url,headers=headers,timeout=10) #VT API call
             vt_response.raise_for_status() # Throws error for all codes >400
             if vt_response.status_code==200:
                 vt_json=vt_response.json()
                 vt_data=vt_json.get("data",{})
                 vt_attributes=vt_data.get("attributes",{})
+                vt_rdap=vt_attributes.get("rdap",{})
                 vt_dict={
                     "IPAddress":vt_data.get("id",0),
                     "Owner":vt_attributes.get("as_owner",""),
                     "Stats":vt_attributes.get("last_analysis_stats",{}),
-                    "Reputation":vt_attributes.get("reputation",0),
-                    "Whois":vt_attributes.get("whois","")
+                    "Reputation":vt_attributes.get("reputation",0),  
+                    "UsageType":vt_rdap.get("name","")                  
                 }
             #logger.info(vt_response.text)
             return vt_dict
@@ -116,4 +116,5 @@ def ip_lookup(ip):
     abuse_response=abuseip_lookup(ip)
     vt_response=vtip_lookup(ip)
     return abuse_response,vt_response
-ip_lookup('203.0.113.50')
+#ip_lookup('203.0.113.50')
+

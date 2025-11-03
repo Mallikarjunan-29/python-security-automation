@@ -2,7 +2,9 @@ import sys
 import os
 sys.path.append(os.getcwd())
 from ai_projects import day1_alertclassifier
-
+from src import logger_config
+from logging import getLogger
+logger=getLogger(__name__)
 test_cases = [
     {
         "name": "Clear Attack",
@@ -44,26 +46,29 @@ test_cases = [
 successful_classifications = 0
 total_prompt_tokens = 0
 total_completion_tokens = 0
+total_hits=0
+cache_hits=0
 for alerts in test_cases:
+    total_hits+=1
     print(f"="*50)
     print(f"Analysing the alert {alerts['name']}")
     print(f"="*50)
     try:
-        ai_output,token_count=day1_alertclassifier.classify_alert(alerts['alert'])
+        logger.debug("Classifying alert")
+        ai_output,token_count,cache_hits=day1_alertclassifier.classify_alert(alerts['alert'],cache_hits)
         if ai_output:
+            logger.debug("Parsing alert")
             result_json=day1_alertclassifier.parse_alert_json(ai_output)
             if result_json:
-                if result_json:
-                    print(f"Classification: {result_json['classification']}\n")
-                    print(f"Confidence: {result_json['confidence']}\n")
-                    print(f"ThreatIntel: {result_json['ThreatIntel']}\n")
-                    print(f"Reasoning: {result_json['reasoning']}\n")
-                else:
-                    print("No Response")
+                print(f"Classification: {result_json['classification']}\n")
+                print(f"Confidence: {result_json['confidence']}\n")
+                print(f"Reasoning: {result_json['reasoning']}\n")
             else:
                 print("Parsing failed")
+                logger.error("No AI Response")
         else:
             print("No AI response")
+            logger.error("No AI Response")
         if token_count:
             total_prompt_tokens += token_count["PromptToken"]
             total_completion_tokens += token_count["CandidateToken"]
@@ -72,11 +77,14 @@ for alerts in test_cases:
             print(f"Token Usage: {token_count}\n")
             print(f"Cost of this alert analysis: ${cost}\n")
         else:
+            logger.error("Token count not available\n")
             print("Token count not available\n")
     except Exception as e:
+        logger.error(e)
         print(e)
 print("BATCH SUMMARY")
 print("="*60)
 print(f"Total Successful Classifications: {successful_classifications}")
 print(f"Total Token Usage: {total_prompt_tokens+total_completion_tokens}")
 print(f"Total Cost: ${day1_alertclassifier.calculate_cost({'PromptToken': total_prompt_tokens, 'CandidateToken': total_completion_tokens})}")
+print(f"{cache_hits}/{total_hits} cache hits")
