@@ -14,6 +14,7 @@ sys.path.append(os.getcwd())
 from src import logger_config
 from src.logger_config import get_logger
 logger=get_logger(__name__)
+
 def build_prompt(alert,abuse_response,vt_response):
     """
     Takes Alert dictionary and builds a prompt
@@ -55,36 +56,37 @@ Classify as :
 """
     return prompt
 
-def classify_alert(alert,cache_hits,max_retries=3,):
+def classify_alert(alert,cache_data,max_retries=3,):
     """
     Alert -> Threat Intel -> Cache -> AI -> classification
     """
-    #Cache logic
-    base_path=os.getcwd()
-    cache_path=os.path.join(base_path,"cache")
-    os.makedirs(cache_path,exist_ok=True)
-    file_name=f"{str(alert['source_ip']).replace(".","_")}.json"
-    file_path=os.path.join(cache_path,file_name)
-    write_indicator=1
-    if os.path.exists(file_path):
-        cached_data=load_cache(file_path) #reading data from cache
-        time_difference= datetime.now()-datetime.strptime((cached_data['Timestamp']),"%Y-%m-%d %H:%M:%S")
-        if time_difference< timedelta(seconds=3600):
-            logger.debug(f"Loading cache for the IP {alert['source_ip']}")
-            write_indicator=0    
-            abuse_response=cached_data['AbuseIntel']
-            vt_response=cached_data['VTIntel'] 
-            cache_hits+=1   
-    if write_indicator==1:
-        logger.debug(f"Loading TI data for the IP {alert['source_ip']}")
-        abuse_response,vt_response=day2_threatintel.ip_lookup(alert['source_ip'])
-        cache_data={
-            "IP":alert['source_ip'],
+    ip_to_check=alert['source_ip']
+    itemtocheck=cache_data.get(ip_to_check,0)
+    if not cache_data:
+        abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
+        data_to_cache={
+            "IP":ip_to_check,
             "AbuseIntel":abuse_response,
             "VTIntel":vt_response,
-            "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        cache_ip(file_path,cache_data) # Writing data to cache
+            "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "CacheHit":0
+            }
+        cache_data.update({ip_to_check:data_to_cache})
+    elif itemtocheck==0:
+        abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
+        data_to_cache={
+            "IP":ip_to_check,
+            "AbuseIntel":abuse_response,
+            "VTIntel":vt_response,
+            "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "CacheHit":0
+            }
+        cache_data.update({ip_to_check:data_to_cache})
+    else:
+        abuse_response=cache_data[ip_to_check]['AbuseIntel']
+        vt_response=cache_data[ip_to_check]['VTIntel'] 
+        cache_data[ip_to_check]['CacheHit']+=1
+    
     for attempts in range(max_retries):
         try:
             gemini_key=os.getenv('GEMINIKEY')
@@ -99,7 +101,7 @@ def classify_alert(alert,cache_hits,max_retries=3,):
                 "ToolUsePromptToken":getattr(response.usage_metadata,"tool_use_prompt_token_count",0),
                 "CacheToken":getattr(response.usage_metadata,"cache_token_count",0)
             }
-            return response.text,token_data,cache_hits
+            return response.text,token_data,cache_data
         except Exception as e:
             if attempts < max_retries - 1:
                 print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
@@ -150,3 +152,22 @@ def load_cache(file_path):
         return data
     except Exception as e:
         logger.error(e)
+
+def prune_old_cache(cache_dump):
+    logger.debug("Pruning old cache")
+    ttl=3600
+    try:
+        listofkeys=list(cache_dump.keys())
+        prunecount=0
+        for keys in listofkeys:
+            logger.debug(f"Checking {keys} for pruning ")
+            timestamp=cache_dump[keys].get("Timestamp","")
+            timediff=datetime.now()-datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S")
+            if timediff>timedelta(seconds=ttl):
+                cache_dump.pop(keys)
+                prunecount+=1
+        logger.debug(f"Pruned item count: {prunecount}")
+        return cache_dump
+    except Exception as e:
+        logger.error(e)
+        return None
