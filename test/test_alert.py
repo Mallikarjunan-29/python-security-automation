@@ -89,6 +89,7 @@ for alerts in test_cases:
         if token_count:
             total_prompt_tokens += token_count["PromptToken"]
             total_completion_tokens += token_count["CandidateToken"]
+            thoughts_token_count+=token_count["ThoughtsToken"]
             successful_classifications += 1
             cost = day1_alertclassifier.calculate_cost(token_count)
             print(f"Token Usage: {token_count}\n")
@@ -105,7 +106,7 @@ if cache_data:
 print("BATCH SUMMARY")
 print("="*60)
 print(f"Total Successful Classifications: {successful_classifications}")
-print(f"Total Token Usage: {total_prompt_tokens+total_completion_tokens}")
+print(f"Total Token Usage: {total_prompt_tokens+total_completion_tokens+thoughts_token_count}")
 print(f"Total Cost: ${day1_alertclassifier.calculate_cost({'PromptToken': total_prompt_tokens, 'CandidateToken': total_completion_tokens})}")
 for keys,values in cache_data.items():
     print(f"cache hits for {keys} = {values['CacheHit']}")

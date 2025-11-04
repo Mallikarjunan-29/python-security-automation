@@ -99,7 +99,8 @@ def classify_alert(alert,cache_data,max_retries=3,):
                 "TotalToken":getattr(response.usage_metadata,"total_token_count",0),
                 "CandidateToken":getattr(response.usage_metadata,"candidates_token_count",0),
                 "ToolUsePromptToken":getattr(response.usage_metadata,"tool_use_prompt_token_count",0),
-                "CacheToken":getattr(response.usage_metadata,"cache_token_count",0)
+                "CacheToken":getattr(response.usage_metadata,"cache_token_count",0),
+                "ThoughtsToken":getattr(response.usage_metadata,"thoughts_token_count",0)
             }
             return response.text,token_data,cache_data
         except Exception as e:
@@ -129,9 +130,9 @@ def parse_alert_json(ai_output):
 
 def calculate_cost(token):
     try:
-        prompt_token_cost=0.03 #$ per 1000 tokens
-        output_token_cost=0.06 #$ per 1000 tokens
-        total_cost=prompt_token_cost*token["PromptToken"]/1000 + output_token_cost*token["CandidateToken"]/1000
+        prompt_token_cost=1 #$ per 1M tokens
+        output_token_cost=10 #$ per 1M tokens
+        total_cost=prompt_token_cost*token["PromptToken"]/1_000_000 + output_token_cost*token["CandidateToken"]/1_000_000
         return total_cost
     except Exception as e:
         logger.error(e)
