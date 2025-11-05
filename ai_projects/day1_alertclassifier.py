@@ -14,8 +14,10 @@ sys.path.append(os.getcwd())
 from src import logger_config
 from src.logger_config import get_logger
 logger=get_logger(__name__)
+import hashlib
 
 def build_prompt(alert,abuse_response,vt_response):
+    logger.debug("Prompt Building Started")
     """
     Takes Alert dictionary and builds a prompt
     """
@@ -48,51 +50,74 @@ Classify as :
  {{
     "classification":"TRUE_POSITIVE",
     "confidence":95,
-    "reasoning": "
-                - how you arrived at the result?
-                - what is the supporting data?
-                - what makes the classfication fool proof"
+    "reasoning": how you arrived at the result?what is the supporting data?what makes the classfication fool proof"
  }}
 """
+    logger.debug("Prompt Building ended")
     return prompt
 
-def classify_alert(alert,cache_data,max_retries=3,):
+def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
     """
     Alert -> Threat Intel -> Cache -> AI -> classification
     """
     ip_to_check=alert['source_ip']
-    itemtocheck=cache_data.get(ip_to_check,0)
-    if not cache_data:
-        abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
-        data_to_cache={
-            "IP":ip_to_check,
-            "AbuseIntel":abuse_response,
-            "VTIntel":vt_response,
-            "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "CacheHit":0
-            }
-        cache_data.update({ip_to_check:data_to_cache})
-    elif itemtocheck==0:
-        abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
-        data_to_cache={
-            "IP":ip_to_check,
-            "AbuseIntel":abuse_response,
-            "VTIntel":vt_response,
-            "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "CacheHit":0
-            }
-        cache_data.update({ip_to_check:data_to_cache})
-    else:
-        abuse_response=cache_data[ip_to_check]['AbuseIntel']
-        vt_response=cache_data[ip_to_check]['VTIntel'] 
-        cache_data[ip_to_check]['CacheHit']+=1
+    itemtocheck=ti_cache_data.get(ip_to_check,0)
     
-    for attempts in range(max_retries):
+# Loading TI cache data based on conditions
+    if not ti_cache_data:
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        timing.update({"TI_FromCache":0})
+    elif itemtocheck==0:
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        timing.update({"TI_FromCache":0})
+    else:
+        logger.debug("Loading TI Response from cache started")
+        start_time=time.time()
+        abuse_response=ti_cache_data[ip_to_check]['AbuseIntel']
+        vt_response=ti_cache_data[ip_to_check]['VTIntel'] 
+        end_time=time.time()-start_time
+        timing.update({"TI_FromCache":end_time})
+        ti_cache_data[ip_to_check]['CacheHit']+=1        
+        logger.debug("Loading TI Response from cache ended")
+
+    #Loading AI response checker
+    response_data= json.dumps({"alert":alert,"AbuseTI":ti_cache_data[ip_to_check]['AbuseIntel'],"VTTI":ti_cache_data[ip_to_check]['VTIntel']},sort_keys=True)
+    response_key=hashlib.md5(response_data.encode()).hexdigest()
+    response_to_check=ai_cache_data.get(response_key,"")
+    #Code for ai caching
+    if not ai_cache_data:
+      ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
+      timing.update({"AI_FromCache":0})
+    elif response_to_check=="":
+         ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
+         timing.update({"AI_FromCache":0})
+    else:
+        logger.debug("Loading AI Response from cache started")
+        start_time=time.time()
+        ai_response=ai_cache_data[response_key]['AI_Response']
+        end_time=time.time()-start_time
+        timing.update({"AI_FromCache":end_time})
+        token_data={
+                "PromptToken":0,
+                "TotalToken":0,
+                "CandidateToken":0,
+                "ToolUsePromptToken":0,
+                "CacheToken":0,
+                "ThoughtsToken":0
+            }
+        
+        logger.debug("Loading AI Response from cache ended")
+    return ai_response,token_data,ti_cache_data,ai_cache_data
+
+
+def ai_content_generate(ai_prompt,max_retries=3):
+    logger.debug("AI Content Generated Started")
+    for retries in range(max_retries):
         try:
             gemini_key=os.getenv('GEMINIKEY')
             client=genai.Client(api_key=gemini_key)
             response=client.models.generate_content(
-                model='gemini-2.5-flash',contents=build_prompt(alert,abuse_response,vt_response)
+                model='gemini-2.0-flash-lite',contents=ai_prompt
             )
             token_data={
                 "PromptToken":getattr(response.usage_metadata,"prompt_token_count",0),
@@ -102,17 +127,18 @@ def classify_alert(alert,cache_data,max_retries=3,):
                 "CacheToken":getattr(response.usage_metadata,"cache_token_count",0),
                 "ThoughtsToken":getattr(response.usage_metadata,"thoughts_token_count",0)
             }
-            return response.text,token_data,cache_data
+            logger.debug("AI Content Generated ended")
+            return response.text,token_data
         except Exception as e:
-            if attempts < max_retries - 1:
-                print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
-                time.sleep(2**attempts)
-                continue
             logger.error(e)
+            if e.code==429 or e.code == 503:
+                time.sleep(2**retries)
+                continue
             return None
 
 
 def parse_alert_json(ai_output):
+    logger.debug("AI output parsing started")
     """
     Parse the results of AI output to format a clean Output
     """
@@ -121,18 +147,22 @@ def parse_alert_json(ai_output):
         if json_output:
             result=json_output.group()
             result_json=json.loads(result)
+            logger.debug("AI output parsing ended")
             return result_json
         else:
+            logger.error("No Json to parse")
             return None   
     except Exception as e:
         logger.error(e)
         return None
 
 def calculate_cost(token):
+    logger.debug("Calculating Cost started")
     try:
         prompt_token_cost=1 #$ per 1M tokens
         output_token_cost=10 #$ per 1M tokens
         total_cost=prompt_token_cost*token["PromptToken"]/1_000_000 + output_token_cost*token["CandidateToken"]/1_000_000
+        logger.debug("Calculating Cost ended")
         return total_cost
     except Exception as e:
         logger.error(e)
@@ -147,9 +177,11 @@ def cache_ip(file_path,data):
         logger.error(e)
 
 def load_cache(file_path):
+    logger.debug("Cache loading started")
     try:
         with open(file_path,"r") as f:
            data= json.load(f)
+           logger.debug("Cache loading ended")
         return data
     except Exception as e:
         logger.error(e)
@@ -168,7 +200,50 @@ def prune_old_cache(cache_dump):
                 cache_dump.pop(keys)
                 prunecount+=1
         logger.debug(f"Pruned item count: {prunecount}")
+        logger.debug("Pruning of cache ended")
         return cache_dump
     except Exception as e:
         logger.error(e)
         return None
+    
+def update_ti_cache(ti_cache_data,timing,ip_to_check):
+    start_time=time.time()
+    abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
+    end_time=time.time()-start_time
+    timing.update({"TILookup":end_time})
+    data_to_cache={
+        "IP":ip_to_check,
+        "AbuseIntel":abuse_response,
+        "VTIntel":vt_response,
+        "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "CacheHit":0
+        }
+    ti_cache_data.update({ip_to_check:data_to_cache})
+    return abuse_response,vt_response
+
+def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data):
+    for attempts in range(max_retries):
+        try:
+            logger.debug("Building Prompt for the alert")
+            start_time=time.time()
+            ai_prompt=build_prompt(alert,abuse_response,vt_response)
+            logger.debug("Generating AI response")                
+            ai_response,token_data=    ai_content_generate(ai_prompt)
+            end_time=time.time()-start_time
+            timing.update({"AI_ContentGenerate":end_time})
+            ai_data_to_cache={
+                "AI_Response":ai_response,
+                "TokenData":token_data,
+                "AI_CacheHit":0,
+                "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            ai_cache_data.update({response_key:ai_data_to_cache})
+            return ai_response,token_data
+        except Exception as e:
+            if attempts < max_retries - 1:
+                print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
+                time.sleep(2**attempts)
+                continue
+            logger.error(e)
+            return None
+    

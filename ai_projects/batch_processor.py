@@ -1,28 +1,17 @@
 import sys
 import time
+import copy
 import json
 import os
 sys.path.append(os.getcwd())
 from ai_projects import day1_alertclassifier
 from src import logger_config
 from src.cache_handler import CacheHandler
-
+from concurrent.futures import ThreadPoolExecutor,as_completed
 from logging import getLogger
 logger=getLogger(__name__)
-total_timing={
-    'TI_CacheLoad':0,
-    'TI_CachePrune':0,
-    'AI_CacheLoad':0,
-    'AI_CachePrune':0,
-    'TILookup':0,
-    'TI_FromCache':0,
-    'AI_ContentGenerate':0,
-    'AI_FromCache':0,
-    'ParseAlert':0,
-    'CalculateCost':0,
-    'TI_WriteCache':0,
-    'AI_WriteCache':0
-}
+
+
 test_cases =[
   {
     "name": "Brute Force Attack 1",
@@ -221,6 +210,98 @@ test_cases =[
   }
 ]
 
+
+total_timing={
+    'TI_CacheLoad':0,
+    'TI_CachePrune':0,
+    'AI_CacheLoad':0,
+    'AI_CachePrune':0,
+    'TILookup':0,
+    'TI_FromCache':0,
+    'AI_ContentGenerate':0,
+    'AI_FromCache':0,
+    'ParseAlert':0,
+    'CalculateCost':0,
+    'TI_WriteCache':0,
+    'AI_WriteCache':0
+}
+def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
+    try:
+        alert_timing={
+            'TI_CacheLoad':0,
+            'TI_CachePrune':0,
+            'AI_CacheLoad':0,
+            'AI_CachePrune':0,
+            'TILookup':0,
+            'TI_FromCache':0,
+            'AI_ContentGenerate':0,
+            'AI_FromCache':0,
+            'ParseAlert':0,
+            'CalculateCost':0,
+            'TI_WriteCache':0,
+            'AI_WriteCache':0
+            }
+        alert_ti_cache_data=copy.deepcopy(ti_cache_data)
+        alert_ai_cache_data=copy.deepcopy(ai_cache_data)
+        total_prompt_tokens=0
+        total_completion_tokens=0
+        thoughts_token_count=0
+        logger.debug("Classifying alert")
+        thread_start=time.time()
+        ai_output,token_count,alert_ti_cache_data,alert_ai_cache_data=day1_alertclassifier.classify_alert(alerts['alert'],alert_ti_cache_data,alert_ai_cache_data,alert_timing)
+        if ai_output:
+            logger.debug("Parsing alert")
+            start_time=time.time()
+            result_json=day1_alertclassifier.parse_alert_json(ai_output)
+            end_time=time.time()-start_time
+            alert_timing.update({"ParseAlert":end_time})
+            if result_json:
+                print(f"Classification: {result_json['classification']}\n")
+                print(f"Confidence: {result_json['confidence']}\n")
+                print(f"Reasoning: {result_json['reasoning']}")
+            else:
+                print("Parsing failed")
+                logger.error("No AI Response")
+        else:
+            print("No AI response")
+            logger.error("No AI Response")
+        if token_count:
+            total_prompt_tokens += token_count["PromptToken"]
+            total_completion_tokens += token_count["CandidateToken"]
+            if token_count["ThoughtsToken"]:
+                thoughts_token_count+=token_count["ThoughtsToken"]
+            
+            if token_count["PromptToken"]==0:
+                start_time=time.time()
+                print("AI Response loaded from Cache, hence 0 cost")
+                end_time=time.time()-start_time
+                alert_timing.update({"CalculateCost":0})
+            else:            
+                start_time=time.time()
+                cost = day1_alertclassifier.calculate_cost(token_count)
+                end_time=time.time()-start_time
+                alert_timing.update({"CalculateCost":end_time})
+                print(f"Token Usage: {token_count}\n")
+                print(f"Cost of this alert analysis: ${cost}\n")
+        else:
+            logger.error("Token count not available\n")
+            print("Token count not available\n")
+        thread_end=time.time()-thread_start
+        output={
+            "alert_name":alerts['name'],
+            "Classification": result_json['classification'],
+            "Confidence": result_json['confidence'],
+            "Reasoning": result_json['reasoning'],
+            "TotalTime":thread_end,
+            "TimingBreakDown":alert_timing.copy(),
+            "TI_Cache":alert_ti_cache_data.copy(),
+            "AI_Cache":alert_ai_cache_data.copy()
+        }
+        return output
+    except Exception as e:
+        logger.error(e)
+
+
 def test_function():
     try:
         
@@ -282,70 +363,30 @@ def test_function():
             timing.update({"AI_CachePrune":end_time})
         else:
             timing.update({"AI_CachePrune":0})
-        for alerts in test_cases:
-            print(f"="*50)
-            print(f"Analysing the alert {alerts['name']}")
-            print(f"="*50)
 
-            logger.debug("Classifying alert")
-            ai_output,token_count,ti_cache_data,ai_cache_data=day1_alertclassifier.classify_alert(alerts['alert'],ti_cache_data,ai_cache_data,timing)
-            if ai_output:
-                logger.debug("Parsing alert")
-                start_time=time.time()
-                result_json=day1_alertclassifier.parse_alert_json(ai_output)
-                end_time=time.time()-start_time
-                timing.update({"ParseAlert":end_time})
-                if result_json:
-                    print(f"Classification: {result_json['classification']}\n")
-                    print(f"Confidence: {result_json['confidence']}\n")
-                    print(f"Reasoning: {result_json['reasoning']}")
-                else:
-                    print("Parsing failed")
-                    logger.error("No AI Response")
-            else:
-                print("No AI response")
-                logger.error("No AI Response")
-            if token_count:
-                total_prompt_tokens += token_count["PromptToken"]
-                total_completion_tokens += token_count["CandidateToken"]
-                if token_count["ThoughtsToken"]:
-                    thoughts_token_count+=token_count["ThoughtsToken"]
-                
-                if token_count["PromptToken"]==0:
-                    start_time=time.time()
-                    print("AI Response loaded from Cache, hence 0 cost")
-                    end_time=time.time()-start_time
-                    timing.update({"CalculateCost":0})
-                else:            
-                    start_time=time.time()
-                    cost = day1_alertclassifier.calculate_cost(token_count)
-                    end_time=time.time()-start_time
-                    timing.update({"CalculateCost":end_time})
-                    print(f"Token Usage: {token_count}\n")
-                    print(f"Cost of this alert analysis: ${cost}\n")
-            else:
-                logger.error("Token count not available\n")
-                print("Token count not available\n")
-            print(f"Alert TI cache load timing:{timing['TI_FromCache']}")
-            print(f"Alert AI cache load timing:{timing['AI_FromCache']}")
-            print(f"TI Look up from cache:{timing['TILookup']}")
-            print(f"AI Content Generation time:{timing['AI_ContentGenerate']}")
-            print(f"Alert AI Parse timing:{timing['ParseAlert']}")
-            print(f"Token Cost Calculation timing:{timing['CalculateCost']}")
-            
-            total_timing['TI_CacheLoad']+=timing['TI_CacheLoad'] if timing['TI_CacheLoad'] else 0
-            total_timing['TI_CachePrune']+=timing['TI_CachePrune'] if timing['TI_CachePrune'] else 0
-            total_timing['AI_CacheLoad']+=timing['AI_CacheLoad'] if timing['AI_CacheLoad'] else 0
-            total_timing['AI_CachePrune']+=timing['AI_CachePrune'] if timing['AI_CachePrune'] else 0
-            total_timing['TI_FromCache']+=timing['TI_FromCache'] if timing['TI_FromCache'] else 0
-            total_timing['AI_FromCache']+=timing['AI_FromCache'] if timing['AI_FromCache'] else 0
-            total_timing['TI_WriteCache']+=timing['TI_WriteCache'] if timing['TI_WriteCache'] else 0
-            total_timing['AI_WriteCache']+=timing['AI_WriteCache'] if timing['AI_WriteCache'] else 0
-            total_timing['TILookup']+=timing['TILookup'] if timing['TILookup'] else 0
-            total_timing['AI_ContentGenerate']+=timing['AI_ContentGenerate'] if timing['AI_ContentGenerate'] else 0
-            total_timing['ParseAlert']+=timing['ParseAlert'] if timing['ParseAlert'] else 0
-            total_timing['CalculateCost']+=timing['CalculateCost'] if timing['CalculateCost'] else 0
+        
+        #Batch Execution
+        logger.debug("Threat Pool execution Started")
+        batch_start=time.time()
+        with ThreadPoolExecutor(max_workers=5) as exe:
+            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_cases]
+        batch_end=time.time()-batch_start
+        logger.debug("Threat Pool execution ended")
+        future_list=[]
+        for results in as_completed(future):
+            result=results.result()
+            future_list.append(result)
+            print(f"Alert:{result['alert_name']}finished in {result['TotalTime']}s | Class: {result['Classification']}")
+            print(f"Timing Breakdown: {result['TimingBreakDown']}")
+            alert_ti_data=result['TI_Cache']
+            alert_ai_data=result['AI_Cache']
+            ti_cache_data.update(alert_ti_data)
+            ai_cache_data.update(alert_ai_data)
+
+        print(f"Total batch time:{batch_end}")
         # Writing Cache
+        
+    
         if ti_cache_data:
             start_time=time.time()
             cachehandler.write_cache(ti_cache_data,ti_file_path)
@@ -357,31 +398,11 @@ def test_function():
             end_time=time.time()-start_time
             timing.update({"AI_WriteCache":end_time})
         total_time=time.time()-total_time_start
-
-        print("BATCH SUMMARY")
-        print("="*60)
-        print(f"Total Token Usage: {total_prompt_tokens+total_completion_tokens+thoughts_token_count}")
-        print(f"Total Cost: ${day1_alertclassifier.calculate_cost({'PromptToken': total_prompt_tokens, 'CandidateToken': total_completion_tokens})}")
-        for keys,values in ti_cache_data.items():
-            print(f"cache hits for {keys} = {values['CacheHit']}")
-        print(f"Threat Intel Overall Cache Load timing:{total_timing['TI_CacheLoad']}")
-        print(f"Threat Intel OVerall cache prune timing:{total_timing['TI_CachePrune']}")
-        print(f"AI Overall Cache Load timing:{total_timing['AI_CacheLoad']}")
-        print(f"AI Overall Cache Prune timing:{total_timing['AI_CachePrune']}")
-        print(f"Alert TI cache load timing:{total_timing['TI_FromCache']}")
-        print(f"Alert AI cache load timing:{total_timing['AI_FromCache']}")
-        print(f"Alert AI Parse timing:{total_timing['ParseAlert']}")
-        print(f"Token Cost Calculation timing:{total_timing['CalculateCost']}")
-        print(f"TI Cache Write timing:{total_timing['TI_WriteCache']}")
-        print(f"AI Cache Write timing:{total_timing['AI_WriteCache']}")
-        print(f"TI Look up from cache:{total_timing['TILookup']}")
-        print(f"AI Content Generation time:{total_timing['AI_ContentGenerate']}")
-        total=0
-        for values in total_timing.values():
-            total+=values
-        print(f"TotalTimeTaken:{total_time}")
+        print(f"Total run time:{total_time}")
+        
     except Exception as e:
         logger.error(e)
         print(e)
 
 test_function()
+

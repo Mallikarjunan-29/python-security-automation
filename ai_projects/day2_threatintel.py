@@ -20,6 +20,7 @@ def abuseip_lookup(ip,maxretries=3):
         return "IP is a private IP"
     for retries in range(maxretries):
         try:
+            logger.debug("Abuse Lookup started")
             abuse_dict={}
             abuse_key=os.getenv("ABUSEIPDB") #AbuseIPDB API key
             if not abuse_key:
@@ -49,6 +50,7 @@ def abuseip_lookup(ip,maxretries=3):
                     "AbuseConfidenceScore":abuse_data.get("abuseConfidenceScore",0),
                     "IsWhiteListed":abuse_data.get("isWhitelisted",True)
                 }
+            logger.debug("Abuse Lookup ended")
             return abuse_dict
         except ValueError as e:
             logger.error(e)
@@ -66,6 +68,7 @@ def abuseip_lookup(ip,maxretries=3):
         
 #VT Lookup
 def vtip_lookup(ip,maxretries=3):
+    logger.debug("VT Lookup Started")
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
         logger.debug("VT RESPONSE: IP is a private IP")
         return "IP is a private IP"
@@ -97,6 +100,7 @@ def vtip_lookup(ip,maxretries=3):
                     "UsageType":vt_rdap.get("name","")                  
                 }
             #logger.info(vt_response.text)
+            logger.debug("VT Lookup ended")
             return vt_dict
         except ValueError as e:
             logger.error(e)

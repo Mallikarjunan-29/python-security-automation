@@ -9,19 +9,19 @@ logger=get_logger(__name__)
 class CacheHandler:
     def __init__(self):
         self.TTL=14400
-        self.file_path=""
 
-    def cache_ip(self,data):
-        logger.debug(f"Caching ip {data.keys()}")
+
+    def write_cache(self,data,path):
+        logger.debug(f"Caching intel")
         try:
-            with open (self.file_path,"w") as f:
+            with open (path,"w") as f:
                 json.dump(data,f,indent=4)           
         except Exception as e:
-            logger.error(e)
+            logger.error(e)    
 
-    def load_cache(self):
+    def load_cache(self,path):
         try:
-            with open(self.file_path,"r") as f:
+            with open(path,"r") as f:
              data= json.load(f)
             return data
         except Exception as e:
