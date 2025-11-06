@@ -872,7 +872,30 @@ test_cases_50 = [
   }
 ]
 
-
+test_cases_1 = [
+  # BRUTE FORCE ATTACKS (10 alerts)
+  {
+    "name": "Brute Force 1 - TOR",
+    "alert": {
+      "user": "alice@company.com",
+      "source_ip": "193.32.162.157",
+      "failed_logins": 8,
+      "success": True,
+      "time": "02:00",
+      "location": "Moscow, RU"
+    },
+    "name": "Brute Force 1 - TOR",
+    "alert": {
+      "user": "alice@company.com",
+      "source_ip": "45.115.176.136",
+      "failed_logins": 5,
+      "success": True,
+      "time": "02:00",
+      "location": "Haryana, IN"
+    }
+    
+  }
+]
 total_timing={
     'TI_CacheLoad':0,
     'TI_CachePrune':0,
@@ -887,81 +910,67 @@ total_timing={
     'TI_WriteCache':0,
     'AI_WriteCache':0
 }
+reasoning_counter=0
 def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
-    try:
-        alert_timing={
-            'TI_CacheLoad':0,
-            'TI_CachePrune':0,
-            'AI_CacheLoad':0,
-            'AI_CachePrune':0,
-            'TILookup':0,
-            'TI_FromCache':0,
-            'AI_ContentGenerate':0,
-            'AI_FromCache':0,
-            'ParseAlert':0,
-            'CalculateCost':0,
-            'TI_WriteCache':0,
-            'AI_WriteCache':0
-            }
-        alert_ti_cache_data=copy.deepcopy(ti_cache_data)
-        alert_ai_cache_data=copy.deepcopy(ai_cache_data)
-        total_prompt_tokens=0
-        total_completion_tokens=0
-        thoughts_token_count=0
-        logger.debug("Classifying alert")
-        thread_start=time.time()
-        ai_output,token_count,alert_ti_cache_data,alert_ai_cache_data=day1_alertclassifier.classify_alert(alerts['alert'],alert_ti_cache_data,alert_ai_cache_data,alert_timing)
-        if ai_output:
-            logger.debug("Parsing alert")
+  try:
+    alert_timing={
+      'TI_CacheLoad':0,
+      'TI_CachePrune':0,
+      'AI_CacheLoad':0,
+      'AI_CachePrune':0,
+      'TILookup':0,
+      'TI_FromCache':0,
+      'AI_ContentGenerate':0,
+      'AI_FromCache':0,
+      'ParseAlert':0,
+      'CalculateCost':0,
+      'TI_WriteCache':0,
+      'AI_WriteCache':0
+      }
+    alert_ti_cache_data=copy.deepcopy(ti_cache_data)
+    alert_ai_cache_data=copy.deepcopy(ai_cache_data)
+    total_prompt_tokens=0
+    total_completion_tokens=0
+    thoughts_token_count=0
+    logger.debug("Classifying alert")
+    thread_start=time.time()
+    ai_output,token_count,alert_ti_cache_data,alert_ai_cache_data=day1_alertclassifier.classify_alert(alerts['alert'],alert_ti_cache_data,alert_ai_cache_data,alert_timing)
+    print(ai_output)
+    if token_count:
+        total_prompt_tokens += token_count["PromptToken"]
+        total_completion_tokens += token_count["CandidateToken"]
+        if token_count["ThoughtsToken"]:
+            thoughts_token_count+=token_count["ThoughtsToken"]
+        
+        if token_count["PromptToken"]==0:
             start_time=time.time()
-            result_json=day1_alertclassifier.parse_alert_json(ai_output)
+            print("AI Response loaded from Cache, hence 0 cost")
             end_time=time.time()-start_time
-            alert_timing.update({"ParseAlert":end_time})
-            if result_json:
-                print(f"Classification: {result_json['classification']}\n")
-                print(f"Confidence: {result_json['confidence']}\n")
-                print(f"Reasoning: {result_json['reasoning']}")
-            else:
-                print("Parsing failed")
-                logger.error("No AI Response")
-        else:
-            print("No AI response")
-            logger.error("No AI Response")
-        if token_count:
-            total_prompt_tokens += token_count["PromptToken"]
-            total_completion_tokens += token_count["CandidateToken"]
-            if token_count["ThoughtsToken"]:
-                thoughts_token_count+=token_count["ThoughtsToken"]
-            
-            if token_count["PromptToken"]==0:
-                start_time=time.time()
-                print("AI Response loaded from Cache, hence 0 cost")
-                end_time=time.time()-start_time
-                alert_timing.update({"CalculateCost":0})
-            else:            
-                start_time=time.time()
-                cost = day1_alertclassifier.calculate_cost(token_count)
-                end_time=time.time()-start_time
-                alert_timing.update({"CalculateCost":end_time})
-                print(f"Token Usage: {token_count}\n")
-                print(f"Cost of this alert analysis: ${cost}\n")
-        else:
-            logger.error("Token count not available\n")
-            print("Token count not available\n")
-        thread_end=time.time()-thread_start
-        output={
-            "alert_name":alerts['name'],
-            "Classification": result_json['classification'],
-            "Confidence": result_json['confidence'],
-            "Reasoning": result_json['reasoning'],
-            "TotalTime":thread_end,
-            "TimingBreakDown":alert_timing.copy(),
-            "TI_Cache":alert_ti_cache_data.copy(),
-            "AI_Cache":alert_ai_cache_data.copy()
-        }
-        return output
-    except Exception as e:
-        logger.error(e)
+            alert_timing.update({"CalculateCost":0})
+        else:            
+            start_time=time.time()
+            cost = day1_alertclassifier.calculate_cost(token_count)
+            end_time=time.time()-start_time
+            alert_timing.update({"CalculateCost":end_time})
+            print(f"Token Usage: {token_count}\n")
+            print(f"Cost of this alert analysis: ${cost}\n")
+    else:
+        logger.error("Token count not available\n")
+        print("Token count not available\n")
+    thread_end=time.time()-thread_start
+    output={
+        "alert_name":alerts['name'],
+        "Classification": ai_output['classification'],
+        "Confidence": ai_output['confidence'],
+        "Reasoning": ai_output['reasoning'],
+        "TotalTime":thread_end,
+        "TimingBreakDown":alert_timing.copy(),
+        "TI_Cache":alert_ti_cache_data.copy(),
+        "AI_Cache":alert_ai_cache_data.copy()
+    }
+    return output
+  except Exception as e:
+      logger.error(e)
 
 
 def test_function():

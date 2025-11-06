@@ -22,6 +22,7 @@ def build_prompt(alert,abuse_response,vt_response):
     """
     Takes Alert dictionary and builds a prompt
     """
+    human_override=f"- Analyst Override:{alert['human_override'] if 'human_override' in alert and alert['human_override']!="" else ""}"
     prompt = f"""
 You are a SOC analyst
 Analyze this login alert
@@ -31,6 +32,7 @@ Analyze this login alert
 - Login Status: {alert['success']} 
 - Time of activity: {alert['time']}
 - IP location: {alert['location']}
+{human_override}
 
 This is what the threat intel feeds say about the IP
 AbuseIPDB:{abuse_response}
@@ -48,6 +50,7 @@ Classify as :
 - confidence: integer 0-100 (no % sign).
 - reasoning: array of exactly 3 strings. Each string max 50 words. No bullet characters, no newlines inside items.
 - Do NOT output any extra text, commentary, or code fences. Output must be parseable by json.loads().
+- Include Analyst override if available
 
 OUTPUT_SCHEMA:
 {{
@@ -93,15 +96,22 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
     response_to_check=ai_cache_data.get(response_key,"")
     #Code for ai caching
     if not ai_cache_data:
+      alert['human_override']=""
       ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
       timing.update({"AI_FromCache":0})
     elif response_to_check=="":
-         ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
-         timing.update({"AI_FromCache":0})
+        alert['human_override']=""
+        ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
+        timing.update({"AI_FromCache":0})
+    elif ai_cache_data[response_key]['AI_Response']!=ai_cache_data[response_key]['Humanoverride'] and ai_cache_data[response_key]['Humanoverride'] !="" :
+        alert['human_override']=ai_cache_data[response_key]['Humanoverride']
+        ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
+        timing.update({"AI_FromCache":0})
     else:
         logger.debug("Loading AI Response from cache started")
         start_time=time.time()
         ai_response=ai_cache_data[response_key]['AI_Response']
+        human_override=ai_cache_data[response_key]['Humanoverride']
         end_time=time.time()-start_time
         timing.update({"AI_FromCache":end_time})
         token_data={
@@ -116,8 +126,8 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
         logger.debug("Loading AI Response from cache ended")
     return ai_response,token_data,ti_cache_data,ai_cache_data
 
-gemini_rate_limiter=GeminiRateLimiter()
 def ai_content_generate(ai_prompt,max_retries=3):
+    gemini_rate_limiter=GeminiRateLimiter()
     logger.debug("AI Content Generated Started")
     for retries in range(max_retries):
         try:
@@ -239,14 +249,23 @@ def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response
             ai_response,token_data=    ai_content_generate(ai_prompt)
             end_time=time.time()-start_time
             timing.update({"AI_ContentGenerate":end_time})
+            logger.debug("Parsing AI output")
+            start_time=time.time()                
+            if ai_response:
+                ai_output=parse_alert_json(ai_response)
+            else:
+                ai_output="No AI Response"
+            end_time=time.time()-start_time
+            timing.update({"ParseAlert":end_time})
             ai_data_to_cache={
-                "AI_Response":ai_response,
+                "AI_Response":ai_output,
                 "TokenData":token_data,
                 "AI_CacheHit":0,
                 "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Humanoverride":alert['human_override'] if alert['human_override']!="" else ""
             }
             ai_cache_data.update({response_key:ai_data_to_cache})
-            return ai_response,token_data
+            return ai_output,token_data
         except Exception as e:
             if attempts < max_retries - 1:
                 print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
