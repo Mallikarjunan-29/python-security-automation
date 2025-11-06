@@ -11,6 +11,7 @@ import json
 import time
 from ai_projects import day2_threatintel
 sys.path.append(os.getcwd())
+from src.rate_limiter import GeminiRateLimiter
 from src import logger_config
 from src.logger_config import get_logger
 logger=get_logger(__name__)
@@ -41,17 +42,23 @@ Classify as :
  - FALSE_POSITIVE (legitimate behaviour)
  - NEEDS_REVIEW (uncler)
 
- Think step by step, use Threat Intel enrichment provided to aid your reasoning and then provide:
- 1. Classification
- 2. Confidence Score (0-100%)
- 3. Reasoning - 3 bullets , 50 words each
-                
- Format as Json:
- {{
-    "classification":"TRUE_POSITIVE",
-    "confidence":95,
-    "reasoning": how you arrived at the result?what is the supporting data?what makes the classfication fool proof"
- }}
+ INSTRUCTIONS:
+- ONLY output a single JSON object with the exact keys: classification, confidence, reasoning.
+- classification: one of "TRUE_POSITIVE", "FALSE_POSITIVE", "NEEDS_REVIEW" (string).
+- confidence: integer 0-100 (no % sign).
+- reasoning: array of exactly 3 strings. Each string max 50 words. No bullet characters, no newlines inside items.
+- Do NOT output any extra text, commentary, or code fences. Output must be parseable by json.loads().
+
+OUTPUT_SCHEMA:
+{{
+  "classification": "TRUE_POSITIVE",
+  "confidence": 95,
+  "reasoning": [
+    "One-sentence reason 1 (<=50 words).",
+    "One-sentence reason 2 (<=50 words).",
+    "One-sentence reason 3 (<=50 words)."
+  ]
+}}
 """
     logger.debug("Prompt Building ended")
     return prompt
@@ -109,15 +116,16 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
         logger.debug("Loading AI Response from cache ended")
     return ai_response,token_data,ti_cache_data,ai_cache_data
 
-
+gemini_rate_limiter=GeminiRateLimiter()
 def ai_content_generate(ai_prompt,max_retries=3):
     logger.debug("AI Content Generated Started")
     for retries in range(max_retries):
         try:
+            gemini_rate_limiter.wait_if_needed()
             gemini_key=os.getenv('GEMINIKEY')
             client=genai.Client(api_key=gemini_key)
             response=client.models.generate_content(
-                model='gemini-2.0-flash-lite',contents=ai_prompt
+                model='gemini-2.5-flash-lite',contents=ai_prompt
             )
             token_data={
                 "PromptToken":getattr(response.usage_metadata,"prompt_token_count",0),

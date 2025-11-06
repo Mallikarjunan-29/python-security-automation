@@ -210,6 +210,668 @@ test_cases =[
   }
 ]
 
+test_cases_50 = [
+  # BRUTE FORCE ATTACKS (10 alerts)
+  {
+    "name": "Brute Force 1 - TOR",
+    "alert": {
+      "user": "alice@company.com",
+      "source_ip": "185.220.101.52",
+      "failed_logins": 8,
+      "success": True,
+      "time": "02:00",
+      "location": "Moscow, RU"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "TOR exit node, high failures"
+  },
+  {
+    "name": "Brute Force 2 - Same TOR",
+    "alert": {
+      "user": "bob@company.com",
+      "source_ip": "185.220.101.52",
+      "failed_logins": 9,
+      "success": True,
+      "time": "02:15",
+      "location": "Moscow, RU"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same TOR IP, different target - SHOULD CACHE"
+  },
+  {
+    "name": "Brute Force 3 - Same TOR",
+    "alert": {
+      "user": "charlie@company.com",
+      "source_ip": "185.220.101.52",
+      "failed_logins": 7,
+      "success": True,
+      "time": "02:30",
+      "location": "Moscow, RU"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same TOR IP, third target - SHOULD CACHE"
+  },
+  {
+    "name": "Brute Force 4 - Different TOR",
+    "alert": {
+      "user": "david@company.com",
+      "source_ip": "185.220.102.88",
+      "failed_logins": 12,
+      "success": True,
+      "time": "03:00",
+      "location": "Russia"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Different TOR node, similar pattern"
+  },
+  {
+    "name": "Brute Force 5 - Failed Attack",
+    "alert": {
+      "user": "eve@company.com",
+      "source_ip": "185.220.103.15",
+      "failed_logins": 15,
+      "success": False,
+      "time": "03:30",
+      "location": "Russia"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Failed but still attack attempt"
+  },
+  {
+    "name": "Brute Force 6 - VPN Provider",
+    "alert": {
+      "user": "frank@company.com",
+      "source_ip": "91.134.123.45",
+      "failed_logins": 10,
+      "success": True,
+      "time": "04:00",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Data center IP, brute force pattern"
+  },
+  {
+    "name": "Brute Force 7 - Same VPN",
+    "alert": {
+      "user": "grace@company.com",
+      "source_ip": "91.134.123.45",
+      "failed_logins": 8,
+      "success": True,
+      "time": "04:15",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same VPN IP - SHOULD CACHE"
+  },
+  {
+    "name": "Brute Force 8 - China",
+    "alert": {
+      "user": "henry@company.com",
+      "source_ip": "45.142.215.99",
+      "failed_logins": 11,
+      "success": True,
+      "time": "05:00",
+      "location": "China"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Data center, high failures"
+  },
+  {
+    "name": "Brute Force 9 - Netherlands",
+    "alert": {
+      "user": "iris@company.com",
+      "source_ip": "45.142.214.123",
+      "failed_logins": 9,
+      "success": True,
+      "time": "05:30",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Hosting provider, brute force"
+  },
+  {
+    "name": "Brute Force 10 - Admin Account",
+    "alert": {
+      "user": "admin@company.com",
+      "source_ip": "91.134.124.67",
+      "failed_logins": 20,
+      "success": True,
+      "time": "06:00",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Admin account targeted, high failures"
+  },
+
+  # PASSWORD SPRAY ATTACKS (8 alerts)
+  {
+    "name": "Password Spray 1",
+    "alert": {
+      "user": "jack@company.com",
+      "source_ip": "45.142.214.123",
+      "failed_logins": 1,
+      "success": True,
+      "time": "07:00",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Low failures, data center IP"
+  },
+  {
+    "name": "Password Spray 2",
+    "alert": {
+      "user": "karen@company.com",
+      "source_ip": "45.142.214.123",
+      "failed_logins": 2,
+      "success": True,
+      "time": "07:05",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP, similar pattern - SHOULD CACHE"
+  },
+  {
+    "name": "Password Spray 3",
+    "alert": {
+      "user": "larry@company.com",
+      "source_ip": "45.142.214.123",
+      "failed_logins": 1,
+      "success": True,
+      "time": "07:10",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP, third target - SHOULD CACHE"
+  },
+  {
+    "name": "Password Spray 4",
+    "alert": {
+      "user": "mary@company.com",
+      "source_ip": "91.134.125.88",
+      "failed_logins": 2,
+      "success": True,
+      "time": "08:00",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Different IP, similar pattern"
+  },
+  {
+    "name": "Password Spray 5",
+    "alert": {
+      "user": "nancy@company.com",
+      "source_ip": "91.134.125.88",
+      "failed_logins": 1,
+      "success": True,
+      "time": "08:05",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP - SHOULD CACHE"
+  },
+  {
+    "name": "Password Spray 6",
+    "alert": {
+      "user": "oliver@company.com",
+      "source_ip": "203.0.113.75",
+      "failed_logins": 2,
+      "success": True,
+      "time": "08:30",
+      "location": "Unknown"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Reserved IP range, suspicious"
+  },
+  {
+    "name": "Password Spray 7",
+    "alert": {
+      "user": "paul@company.com",
+      "source_ip": "185.220.104.23",
+      "failed_logins": 1,
+      "success": True,
+      "time": "09:00",
+      "location": "Russia"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "TOR node, password spray"
+  },
+  {
+    "name": "Password Spray 8",
+    "alert": {
+      "user": "quinn@company.com",
+      "source_ip": "185.220.104.23",
+      "failed_logins": 2,
+      "success": True,
+      "time": "09:05",
+      "location": "Russia"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same TOR - SHOULD CACHE"
+  },
+
+  # CREDENTIAL STUFFING (6 alerts)
+  {
+    "name": "Credential Stuffing 1",
+    "alert": {
+      "user": "rachel@company.com",
+      "source_ip": "91.134.123.45",
+      "failed_logins": 0,
+      "success": True,
+      "time": "10:00",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Success without failures - leaked creds"
+  },
+  {
+    "name": "Credential Stuffing 2",
+    "alert": {
+      "user": "steve@company.com",
+      "source_ip": "91.134.123.45",
+      "failed_logins": 0,
+      "success": True,
+      "time": "10:02",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP, same pattern - SHOULD CACHE"
+  },
+  {
+    "name": "Credential Stuffing 3",
+    "alert": {
+      "user": "tina@company.com",
+      "source_ip": "91.134.123.45",
+      "failed_logins": 0,
+      "success": True,
+      "time": "10:04",
+      "location": "France"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP, third victim - SHOULD CACHE"
+  },
+  {
+    "name": "Credential Stuffing 4",
+    "alert": {
+      "user": "uma@company.com",
+      "source_ip": "45.142.216.50",
+      "failed_logins": 0,
+      "success": True,
+      "time": "11:00",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Different IP, same pattern"
+  },
+  {
+    "name": "Credential Stuffing 5",
+    "alert": {
+      "user": "victor@company.com",
+      "source_ip": "45.142.216.50",
+      "failed_logins": 0,
+      "success": True,
+      "time": "11:02",
+      "location": "Netherlands"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "Same IP - SHOULD CACHE"
+  },
+  {
+    "name": "Credential Stuffing 6",
+    "alert": {
+      "user": "wendy@company.com",
+      "source_ip": "185.220.105.77",
+      "failed_logins": 0,
+      "success": True,
+      "time": "11:30",
+      "location": "Russia"
+    },
+    "expected": "TRUE_POSITIVE",
+    "notes": "TOR node, credential stuffing"
+  },
+
+  # LEGITIMATE USERS (12 alerts)
+  {
+    "name": "Legitimate 1 - Internal Typo",
+    "alert": {
+      "user": "xavier@company.com",
+      "source_ip": "10.0.5.100",
+      "failed_logins": 2,
+      "success": True,
+      "time": "09:15",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal IP, business hours, low failures"
+  },
+  {
+    "name": "Legitimate 2 - Internal Typo",
+    "alert": {
+      "user": "yvonne@company.com",
+      "source_ip": "10.0.5.101",
+      "failed_logins": 1,
+      "success": True,
+      "time": "09:30",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal IP, business hours"
+  },
+  {
+    "name": "Legitimate 3 - Clean IP",
+    "alert": {
+      "user": "zack@company.com",
+      "source_ip": "203.0.113.25",
+      "failed_logins": 1,
+      "success": True,
+      "time": "10:00",
+      "location": "San Francisco, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Clean IP, business hours"
+  },
+  {
+    "name": "Legitimate 4 - VPN Reconnect",
+    "alert": {
+      "user": "adam@company.com",
+      "source_ip": "10.50.1.100",
+      "failed_logins": 3,
+      "success": True,
+      "time": "10:30",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal IP, VPN reconnection"
+  },
+  {
+    "name": "Legitimate 5 - VPN Reconnect",
+    "alert": {
+      "user": "betty@company.com",
+      "source_ip": "10.50.1.101",
+      "failed_logins": 2,
+      "success": True,
+      "time": "11:00",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal IP, business hours"
+  },
+  {
+    "name": "Legitimate 6 - Office IP",
+    "alert": {
+      "user": "carl@company.com",
+      "source_ip": "192.168.1.50",
+      "failed_logins": 1,
+      "success": True,
+      "time": "11:30",
+      "location": "Office Network"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Office network, legitimate"
+  },
+  {
+    "name": "Legitimate 7 - Service Account",
+    "alert": {
+      "user": "svc-backup@company.com",
+      "source_ip": "10.0.2.50",
+      "failed_logins": 1,
+      "success": True,
+      "time": "02:00",
+      "location": "Internal"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Service account, scheduled job"
+  },
+  {
+    "name": "Legitimate 8 - Service Account",
+    "alert": {
+      "user": "svc-monitoring@company.com",
+      "source_ip": "10.0.2.51",
+      "failed_logins": 0,
+      "success": True,
+      "time": "02:00",
+      "location": "Internal"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Service account, automated"
+  },
+  {
+    "name": "Legitimate 9 - Morning Login",
+    "alert": {
+      "user": "diana@company.com",
+      "source_ip": "10.0.6.75",
+      "failed_logins": 1,
+      "success": True,
+      "time": "08:00",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal, morning login"
+  },
+  {
+    "name": "Legitimate 10 - Afternoon",
+    "alert": {
+      "user": "edward@company.com",
+      "source_ip": "10.0.6.76",
+      "failed_logins": 0,
+      "success": True,
+      "time": "14:00",
+      "location": "New York, US"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal, afternoon work"
+  },
+  {
+    "name": "Legitimate 11 - Clean External",
+    "alert": {
+      "user": "fiona@company.com",
+      "source_ip": "203.0.113.100",
+      "failed_logins": 0,
+      "success": True,
+      "time": "09:00",
+      "location": "London, UK"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Clean IP, business hours"
+  },
+  {
+    "name": "Legitimate 12 - Mobile",
+    "alert": {
+      "user": "george@company.com",
+      "source_ip": "172.16.5.100",
+      "failed_logins": 1,
+      "success": True,
+      "time": "15:00",
+      "location": "Mobile Network"
+    },
+    "expected": "FALSE_POSITIVE",
+    "notes": "Internal mobile range"
+  },
+
+  # NEEDS REVIEW (14 alerts)
+  {
+    "name": "Review 1 - Off-Hours Internal",
+    "alert": {
+      "user": "admin@company.com",
+      "source_ip": "10.0.10.50",
+      "failed_logins": 5,
+      "success": True,
+      "time": "23:00",
+      "location": "Internal"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Admin account, off-hours, multiple failures"
+  },
+  {
+    "name": "Review 2 - Travel",
+    "alert": {
+      "user": "helen@company.com",
+      "source_ip": "203.0.113.100",
+      "failed_logins": 1,
+      "success": True,
+      "time": "08:00",
+      "location": "London, UK"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Clean IP but unusual location"
+  },
+  {
+    "name": "Review 3 - Data Center",
+    "alert": {
+      "user": "ian@company.com",
+      "source_ip": "91.134.126.99",
+      "failed_logins": 3,
+      "success": True,
+      "time": "12:00",
+      "location": "France"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Data center IP, moderate failures"
+  },
+  {
+    "name": "Review 4 - Weekend Login",
+    "alert": {
+      "user": "julia@company.com",
+      "source_ip": "10.0.7.80",
+      "failed_logins": 2,
+      "success": True,
+      "time": "22:00",
+      "location": "Internal"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Internal but late night weekend"
+  },
+  {
+    "name": "Review 5 - New Location",
+    "alert": {
+      "user": "kevin@company.com",
+      "source_ip": "203.0.113.150",
+      "failed_logins": 2,
+      "success": True,
+      "time": "07:00",
+      "location": "Tokyo, JP"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Clean IP, unusual location"
+  },
+  {
+    "name": "Review 6 - Moderate Failures",
+    "alert": {
+      "user": "laura@company.com",
+      "source_ip": "10.0.8.90",
+      "failed_logins": 4,
+      "success": True,
+      "time": "16:00",
+      "location": "Internal"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Internal, moderate failures"
+  },
+  {
+    "name": "Review 7 - Reserved IP",
+    "alert": {
+      "user": "mike@company.com",
+      "source_ip": "203.0.113.50",
+      "failed_logins": 4,
+      "success": True,
+      "time": "18:30",
+      "location": "Unknown"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Reserved IP range, suspicious"
+  },
+  {
+    "name": "Review 8 - Hosting Provider",
+    "alert": {
+      "user": "nina@company.com",
+      "source_ip": "91.134.127.111",
+      "failed_logins": 2,
+      "success": True,
+      "time": "13:00",
+      "location": "France"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Hosting provider, moderate risk"
+  },
+  {
+    "name": "Review 9 - Unknown Country",
+    "alert": {
+      "user": "oscar@company.com",
+      "source_ip": "203.0.113.175",
+      "failed_logins": 3,
+      "success": True,
+      "time": "10:00",
+      "location": "Brazil"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Unusual country, moderate failures"
+  },
+  {
+    "name": "Review 10 - Clean but Suspicious",
+    "alert": {
+      "user": "peter@company.com",
+      "source_ip": "203.0.113.200",
+      "failed_logins": 5,
+      "success": True,
+      "time": "20:00",
+      "location": "India"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Clean IP, high failures, unusual location"
+  },
+  {
+    "name": "Review 11 - Admin Off-Hours",
+    "alert": {
+      "user": "root@company.com",
+      "source_ip": "10.0.11.100",
+      "failed_logins": 3,
+      "success": True,
+      "time": "01:00",
+      "location": "Internal"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Root account, very late night"
+  },
+  {
+    "name": "Review 12 - VPN Different Country",
+    "alert": {
+      "user": "rose@company.com",
+      "source_ip": "91.134.128.222",
+      "failed_logins": 1,
+      "success": True,
+      "time": "09:00",
+      "location": "Germany"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Clean but unexpected location"
+  },
+  {
+    "name": "Review 13 - Moderate Risk",
+    "alert": {
+      "user": "sam@company.com",
+      "source_ip": "203.0.113.225",
+      "failed_logins": 6,
+      "success": True,
+      "time": "19:00",
+      "location": "Singapore"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "High failures, distant location"
+  },
+  {
+    "name": "Review 14 - Weekend Admin",
+    "alert": {
+      "user": "sysadmin@company.com",
+      "source_ip": "10.0.12.150",
+      "failed_logins": 4,
+      "success": True,
+      "time": "03:00",
+      "location": "Internal"
+    },
+    "expected": "NEEDS_REVIEW",
+    "notes": "Admin account, very early morning"
+  }
+]
+
 
 total_timing={
     'TI_CacheLoad':0,
@@ -368,8 +1030,8 @@ def test_function():
         #Batch Execution
         logger.debug("Threat Pool execution Started")
         batch_start=time.time()
-        with ThreadPoolExecutor(max_workers=5) as exe:
-            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_cases]
+        with ThreadPoolExecutor(max_workers=3) as exe:
+            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_cases_50]
         batch_end=time.time()-batch_start
         logger.debug("Threat Pool execution ended")
         future_list=[]
