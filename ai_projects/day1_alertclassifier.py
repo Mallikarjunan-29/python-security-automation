@@ -26,12 +26,7 @@ def build_prompt(alert,abuse_response,vt_response):
     prompt = f"""
 You are a SOC analyst
 Analyze this login alert
-- User:{alert['user']}
-- SourceIP:{alert['source_ip']}
-- Number of Login Failures: {alert['failed_logins']}
-- Login Status: {alert['success']} 
-- Time of activity: {alert['time']}
-- IP location: {alert['location']}
+- alert:{json.dumps(alert,indent=4)}
 {human_override}
 
 This is what the threat intel feeds say about the IP
@@ -48,6 +43,7 @@ Classify as :
 - ONLY output a single JSON object with the exact keys: classification, confidence, reasoning.
 - classification: one of "TRUE_POSITIVE", "FALSE_POSITIVE", "NEEDS_REVIEW" (string).
 - confidence: integer 0-100 (no % sign).
+- severity: one of "Critical","High","Medium","Low"
 - reasoning: array of exactly 3 strings. Each string max 50 words. No bullet characters, no newlines inside items.
 - Do NOT output any extra text, commentary, or code fences. Output must be parseable by json.loads().
 - Include Analyst override if available
@@ -56,6 +52,7 @@ OUTPUT_SCHEMA:
 {{
   "classification": "TRUE_POSITIVE",
   "confidence": 95,
+  "severity": "Critical",
   "reasoning": [
     "One-sentence reason 1 (<=50 words).",
     "One-sentence reason 2 (<=50 words).",
@@ -258,6 +255,7 @@ def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response
             end_time=time.time()-start_time
             timing.update({"ParseAlert":end_time})
             ai_data_to_cache={
+                "Alert":alert,
                 "AI_Response":ai_output,
                 "TokenData":token_data,
                 "AI_CacheHit":0,

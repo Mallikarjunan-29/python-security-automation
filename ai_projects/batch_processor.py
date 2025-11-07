@@ -4,6 +4,7 @@ import copy
 import json
 import os
 sys.path.append(os.getcwd())
+from src.alert_queue import queue_alert,get_topalerts
 from ai_projects import day1_alertclassifier
 from src import logger_config
 from src.cache_handler import CacheHandler
@@ -21,7 +22,8 @@ test_cases =[
       "failed_logins": 8,
       "success": True,
       "time": "02:00",
-      "location": "Moscow, RU"
+      "location": "Moscow, RU",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "TOR exit node, brute force pattern"
@@ -34,7 +36,8 @@ test_cases =[
       "failed_logins": 9,
       "success": True,
       "time": "02:15",
-      "location": "Moscow, RU"
+      "location": "Moscow, RU",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Same attacker, different target - SHOULD CACHE"
@@ -47,7 +50,8 @@ test_cases =[
       "failed_logins": 7,
       "success": True,
       "time": "02:30",
-      "location": "Moscow, RU"
+      "location": "Moscow, RU",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Same attacker, third target - SHOULD CACHE"
@@ -60,7 +64,8 @@ test_cases =[
       "failed_logins": 1,
       "success": True,
       "time": "03:00",
-      "location": "Netherlands"
+      "location": "Netherlands",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Different pattern (low failures), different IP"
@@ -86,7 +91,8 @@ test_cases =[
       "failed_logins": 2,
       "success": True,
       "time": "09:15",
-      "location": "New York, US"
+      "location": "New York, US",
+      "severity":"Low"
     },
     "expected": "FALSE_POSITIVE",
     "notes": "Internal IP, business hours, low failures"
@@ -99,7 +105,8 @@ test_cases =[
       "failed_logins": 1,
       "success": True,
       "time": "10:00",
-      "location": "San Francisco, US"
+      "location": "San Francisco, US",
+      "severity":"Low"
     },
     "expected": "FALSE_POSITIVE",
     "notes": "Clean IP, business hours"
@@ -112,7 +119,8 @@ test_cases =[
       "failed_logins": 5,
       "success": True,
       "time": "23:00",
-      "location": "Internal"
+      "location": "Internal",
+      "severity":"Medium"
     },
     "expected": "NEEDS_REVIEW",
     "notes": "Internal but suspicious pattern (admin + night + failures)"
@@ -125,7 +133,8 @@ test_cases =[
       "failed_logins": 0,
       "success": True,
       "time": "04:00",
-      "location": "France"
+      "location": "France",
+      "severity":"High"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Success without failures (leaked creds)"
@@ -138,7 +147,8 @@ test_cases =[
       "failed_logins": 0,
       "success": True,
       "time": "04:02",
-      "location": "France"
+      "location": "France",
+      "severity":"High"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Same IP, same pattern - SHOULD CACHE"
@@ -151,7 +161,8 @@ test_cases =[
       "failed_logins": 15,
       "success": False,
       "time": "05:00",
-      "location": "Russia"
+      "location": "Russia",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "Attack attempt (failed, but still attack)"
@@ -164,7 +175,8 @@ test_cases =[
       "failed_logins": 1,
       "success": True,
       "time": "02:00",
-      "location": "Internal"
+      "location": "Internal",
+      "severity":"Low"
     },
     "expected": "FALSE_POSITIVE",
     "notes": "Service account, internal, scheduled job"
@@ -177,7 +189,8 @@ test_cases =[
       "failed_logins": 3,
       "success": True,
       "time": "14:00",
-      "location": "New York, US"
+      "location": "New York, US",
+      "severity":"medium"
     },
     "expected": "FALSE_POSITIVE",
     "notes": "Internal IP, business hours, low failures"
@@ -190,7 +203,8 @@ test_cases =[
       "failed_logins": 1,
       "success": True,
       "time": "08:00",
-      "location": "London, UK"
+      "location": "London, UK",
+      "severity":"medium"
     },
     "expected": "NEEDS_REVIEW",
     "notes": "Clean IP, business hours, but unusual location"
@@ -203,7 +217,8 @@ test_cases =[
       "failed_logins": 0,
       "success": True,
       "time": "09:00",
-      "location": "China"
+      "location": "China",
+      "severity":"Critical"
     },
     "expected": "TRUE_POSITIVE",
     "notes": "If mary logged in from US 1 hour ago, this is impossible"
@@ -882,7 +897,8 @@ test_cases_1 = [
       "failed_logins": 8,
       "success": True,
       "time": "02:00",
-      "location": "Moscow, RU"
+      "location": "Moscow, RU",
+      "severity":"Critical"
     },
     "name": "Brute Force 1 - TOR",
     "alert": {
@@ -891,7 +907,8 @@ test_cases_1 = [
       "failed_logins": 5,
       "success": True,
       "time": "02:00",
-      "location": "Haryana, IN"
+      "location": "Haryana, IN",
+      "severity":"High"
     }
     
   }
@@ -910,7 +927,7 @@ total_timing={
     'TI_WriteCache':0,
     'AI_WriteCache':0
 }
-reasoning_counter=0
+
 def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
   try:
     alert_timing={
@@ -963,6 +980,9 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
         "Classification": ai_output['classification'],
         "Confidence": ai_output['confidence'],
         "Reasoning": ai_output['reasoning'],
+        "AISeverity":ai_output['severity'],
+        "AlertSeverity":alerts['alert']['severity'],
+        "PriorityLevel":alerts['alert']['prioritylevel'],
         "TotalTime":thread_end,
         "TimingBreakDown":alert_timing.copy(),
         "TI_Cache":alert_ti_cache_data.copy(),
@@ -973,7 +993,7 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
       logger.error(e)
 
 
-def test_function():
+def test_function(alerts):
     try:
         
         total_time_start=time.time()
@@ -1035,12 +1055,14 @@ def test_function():
         else:
             timing.update({"AI_CachePrune":0})
 
-        
+        #Sorting Alert Queue
+        test_alert=queue_alert(alerts)
+
         #Batch Execution
         logger.debug("Threat Pool execution Started")
         batch_start=time.time()
         with ThreadPoolExecutor(max_workers=3) as exe:
-            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_cases_50]
+            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_alert]
         batch_end=time.time()-batch_start
         logger.debug("Threat Pool execution ended")
         future_list=[]
@@ -1053,8 +1075,11 @@ def test_function():
             alert_ai_data=result['AI_Cache']
             ti_cache_data.update(alert_ti_data)
             ai_cache_data.update(alert_ai_data)
-
         print(f"Total batch time:{batch_end}")
+        print("Top Alerts")
+        print("="*50)
+        get_topalerts(future_list,11)
+        
         # Writing Cache
         
     
@@ -1075,5 +1100,206 @@ def test_function():
         logger.error(e)
         print(e)
 
-test_function()
+
+test_cases_ip = [
+    # Brute force / TOR
+    {
+        "name": "Brute Force - TOR 1",
+        "alert": {
+            "user": "alice@company.com",
+            "source_ip": "193.32.162.157",
+            "failed_logins": 12,
+            "success": True,
+            "time": "02:03",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "Brute Force - TOR 2",
+        "alert": {
+            "user": "bob@company.com",
+            "source_ip": "45.115.176.136",
+            "failed_logins": 7,
+            "success": False,
+            "time": "01:45",
+            "location": "Haryana, IN",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Brute Force - Internal",
+        "alert": {
+            "user": "svc_backup@company.com",
+            "source_ip": "198.51.100.24",
+            "failed_logins": 20,
+            "success": True,
+            "time": "03:30",
+            "location": "Unknown",
+            "severity": "High"
+        }
+    },
+
+    # Suspicious IPs / network anomalies
+    {
+        "name": "Port Scan Detected 1",
+        "alert": {
+            "source_ip": "203.0.113.50",
+            "dest_host": "10.10.10.5",
+            "ports_scanned": [22, 23, 80, 443],
+            "rate_per_min": 450,
+            "time": "05:12",
+            "severity": "Medium"
+        }
+    },
+    {
+        "name": "Port Scan Detected 2",
+        "alert": {
+            "source_ip": "198.51.100.77",
+            "dest_host": "10.10.20.15",
+            "ports_scanned": [21, 22, 23, 80, 443, 3389],
+            "rate_per_min": 300,
+            "time": "06:10",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Beaconing C2 1",
+        "alert": {
+            "source_ip": "104.21.32.45",
+            "host": "laptop-45.corp",
+            "interval_seconds": 300,
+            "count": 30,
+            "time": "06:30",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Beaconing C2 2",
+        "alert": {
+            "source_ip": "198.51.100.150",
+            "host": "workstation-22.corp",
+            "interval_seconds": 600,
+            "count": 50,
+            "time": "07:12",
+            "severity": "High"
+        }
+    },
+
+    # Known malicious IPs
+    {
+        "name": "Known Malware C2",
+        "alert": {
+            "user": "eve@company.com",
+            "source_ip": "185.220.101.52",
+            "failed_logins": 0,
+            "success": False,
+            "time": "04:20",
+            "location": "Unknown",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "Suspicious VPS",
+        "alert": {
+            "user": "david@company.com",
+            "source_ip": "45.77.34.10",
+            "failed_logins": 3,
+            "success": True,
+            "time": "01:15",
+            "location": "Netherlands",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Suspicious Hosting Provider",
+        "alert": {
+            "user": "frank@company.com",
+            "source_ip": "138.201.22.14",
+            "failed_logins": 4,
+            "success": True,
+            "time": "03:40",
+            "location": "Germany",
+            "severity": "High"
+        }
+    },
+
+    # TOR / proxy / VPN
+    {
+        "name": "TOR Node Access 1",
+        "alert": {
+            "user": "gina@company.com",
+            "source_ip": "185.220.101.153",
+            "failed_logins": 6,
+            "success": True,
+            "time": "02:50",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "TOR Node Access 2",
+        "alert": {
+            "user": "harry@company.com",
+            "source_ip": "185.220.101.172",
+            "failed_logins": 5,
+            "success": True,
+            "time": "03:10",
+            "location": "Moscow, RU",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Suspicious Proxy IP",
+        "alert": {
+            "user": "irene@company.com",
+            "source_ip": "51.79.144.12",
+            "failed_logins": 2,
+            "success": True,
+            "time": "04:00",
+            "location": "France",
+            "severity": "Medium"
+        }
+    },
+    {
+        "name": "VPN Endpoint Login",
+        "alert": {
+            "user": "jack@company.com",
+            "source_ip": "91.121.60.45",
+            "failed_logins": 1,
+            "success": True,
+            "time": "08:00",
+            "location": "UK",
+            "severity": "Low"
+        }
+    }
+]
+
+test_cases_ip1 = [
+    # Brute force / TOR
+    {
+        "name": "Brute Force - TOR 1",
+        "alert": {
+            "user": "alice@company.com",
+            "source_ip": "193.32.162.157",
+            "failed_logins": 12,
+            "success": True,
+            "time": "02:03",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    },{
+        "name": "VPN Endpoint Login",
+        "alert": {
+            "user": "jack@company.com",
+            "source_ip": "91.121.60.45",
+            "failed_logins": 1,
+            "success": True,
+            "time": "08:00",
+            "location": "UK",
+            "severity": "Low"
+        }
+    }]
+
+test_function(test_cases_ip)
 
