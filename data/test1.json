@@ -1,0 +1,15 @@
+
+{"alerts":[
+    {
+        "name": "Brute Force - TOR 1",
+        "alert": {
+            "user": "alice@company.com",
+            "source_ip": "193.32.162.157",
+            "failed_logins": 12,
+            "success": "true",
+            "time": "02:03",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    }
+]}

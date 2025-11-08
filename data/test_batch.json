@@ -1,0 +1,173 @@
+
+{"alerts":[
+    {
+        "name": "Brute Force - TOR 1",
+        "alert": {
+            "user": "alice@company.com",
+            "source_ip": "193.32.162.157",
+            "failed_logins": 12,
+            "success": "true",
+            "time": "02:03",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "Brute Force - TOR 2",
+        "alert": {
+            "user": "bob@company.com",
+            "source_ip": "45.115.176.136",
+            "failed_logins": 7,
+            "success": "false",
+            "time": "01:45",
+            "location": "Haryana, IN",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Brute Force - Internal",
+        "alert": {
+            "user": "svc_backup@company.com",
+            "source_ip": "198.51.100.24",
+            "failed_logins": 20,
+            "success": "true",
+            "time": "03:30",
+            "location": "Unknown",
+            "severity": "High"
+        }
+    },
+
+    
+    {
+        "name": "Port Scan Detected 1",
+        "alert": {
+            "source_ip": "203.0.113.50",
+            "dest_host": "10.10.10.5",
+            "ports_scanned": [22, 23, 80, 443],
+            "rate_per_min": 450,
+            "time": "05:12",
+            "severity": "Medium"
+        }
+    },
+    {
+        "name": "Port Scan Detected 2",
+        "alert": {
+            "source_ip": "198.51.100.77",
+            "dest_host": "10.10.20.15",
+            "ports_scanned": [21, 22, 23, 80, 443, 3389],
+            "rate_per_min": 300,
+            "time": "06:10",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Beaconing C2 1",
+        "alert": {
+            "source_ip": "104.21.32.45",
+            "host": "laptop-45.corp",
+            "interval_seconds": 300,
+            "count": 30,
+            "time": "06:30",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Beaconing C2 2",
+        "alert": {
+            "source_ip": "198.51.100.150",
+            "host": "workstation-22.corp",
+            "interval_seconds": 600,
+            "count": 50,
+            "time": "07:12",
+            "severity": "High"
+        }
+    },
+
+    
+    {
+        "name": "Known Malware C2",
+        "alert": {
+            "user": "eve@company.com",
+            "source_ip": "185.220.101.52",
+            "failed_logins": 0,
+            "success": "false",
+            "time": "04:20",
+            "location": "Unknown",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "Suspicious VPS",
+        "alert": {
+            "user": "david@company.com",
+            "source_ip": "45.77.34.10",
+            "failed_logins": 3,
+            "success": "true",
+            "time": "01:15",
+            "location": "Netherlands",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Suspicious Hosting Provider",
+        "alert": {
+            "user": "frank@company.com",
+            "source_ip": "138.201.22.14",
+            "failed_logins": 4,
+            "success": "true",
+            "time": "03:40",
+            "location": "Germany",
+            "severity": "High"
+        }
+    },
+
+    
+    {
+        "name": "TOR Node Access 1",
+        "alert": {
+            "user": "gina@company.com",
+            "source_ip": "185.220.101.153",
+            "failed_logins": 6,
+            "success": "true",
+            "time": "02:50",
+            "location": "Moscow, RU",
+            "severity": "Critical"
+        }
+    },
+    {
+        "name": "TOR Node Access 2",
+        "alert": {
+            "user": "harry@company.com",
+            "source_ip": "185.220.101.172",
+            "failed_logins": 5,
+            "success": "true",
+            "time": "03:10",
+            "location": "Moscow, RU",
+            "severity": "High"
+        }
+    },
+    {
+        "name": "Suspicious Proxy IP",
+        "alert": {
+            "user": "irene@company.com",
+            "source_ip": "51.79.144.12",
+            "failed_logins": 2,
+            "success": "true",
+            "time": "04:00",
+            "location": "France",
+            "severity": "Medium"
+        }
+    },
+    {
+        "name": "VPN Endpoint Login",
+        "alert": {
+            "user": "jack@company.com",
+            "source_ip": "91.121.60.45",
+            "failed_logins": 1,
+            "success": "true",
+            "time": "08:00",
+            "location": "UK",
+            "severity": "Low"
+        }
+    }
+]}

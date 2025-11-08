@@ -67,61 +67,68 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
     """
     Alert -> Threat Intel -> Cache -> AI -> classification
     """
-    ip_to_check=alert['source_ip']
-    itemtocheck=ti_cache_data.get(ip_to_check,0)
-    
-# Loading TI cache data based on conditions
-    if not ti_cache_data:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
-        timing.update({"TI_FromCache":0})
-    elif itemtocheck==0:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
-        timing.update({"TI_FromCache":0})
-    else:
-        logger.debug("Loading TI Response from cache started")
-        start_time=time.time()
-        abuse_response=ti_cache_data[ip_to_check]['AbuseIntel']
-        vt_response=ti_cache_data[ip_to_check]['VTIntel'] 
-        end_time=time.time()-start_time
-        timing.update({"TI_FromCache":end_time})
-        ti_cache_data[ip_to_check]['CacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended")
+    try:
+        ip_to_check=alert['source_ip']
+        itemtocheck=ti_cache_data.get(ip_to_check,0)
+        alert_ti_cache={}
+        alert_ai_cache={}
+        # Loading TI cache data based on conditions
+        if not ti_cache_data:
+            abuse_response,vt_response=update_ti_cache(alert_ti_cache,timing,ip_to_check)
+            timing.update({"TI_FromCache":0})
+        elif itemtocheck==0:
+            abuse_response,vt_response=update_ti_cache(alert_ti_cache,timing,ip_to_check)
+            timing.update({"TI_FromCache":0})
+        else:
+            logger.debug("Loading TI Response from cache started")
+            start_time=time.time()
+            alert_ti_cache={ip_to_check:ti_cache_data.get(ip_to_check,0)}
+            abuse_response=alert_ti_cache[ip_to_check]['AbuseIntel']
+            vt_response=alert_ti_cache[ip_to_check]['VTIntel'] 
+            end_time=time.time()-start_time
+            timing.update({"TI_FromCache":end_time})
+            alert_ti_cache[ip_to_check]['CacheHit']+=1        
+            logger.debug("Loading TI Response from cache ended")
 
-    #Loading AI response checker
-    response_data= json.dumps({"alert":alert,"AbuseTI":ti_cache_data[ip_to_check]['AbuseIntel'],"VTTI":ti_cache_data[ip_to_check]['VTIntel']},sort_keys=True)
-    response_key=hashlib.md5(response_data.encode()).hexdigest()
-    response_to_check=ai_cache_data.get(response_key,"")
-    #Code for ai caching
-    if not ai_cache_data:
-      alert['human_override']=""
-      ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
-      timing.update({"AI_FromCache":0})
-    elif response_to_check=="":
-        alert['human_override']=""
-        ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
-        timing.update({"AI_FromCache":0})
-    elif ai_cache_data[response_key]['AI_Response']!=ai_cache_data[response_key]['Humanoverride'] and ai_cache_data[response_key]['Humanoverride'] !="" :
-        alert['human_override']=ai_cache_data[response_key]['Humanoverride']
-        ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data)
-        timing.update({"AI_FromCache":0})
-    else:
-        logger.debug("Loading AI Response from cache started")
-        start_time=time.time()
-        ai_response=ai_cache_data[response_key]['AI_Response']
-        human_override=ai_cache_data[response_key]['Humanoverride']
-        end_time=time.time()-start_time
-        timing.update({"AI_FromCache":end_time})
-        token_data={
-                "PromptToken":0,
-                "TotalToken":0,
-                "CandidateToken":0,
-                "ToolUsePromptToken":0,
-                "CacheToken":0,
-                "ThoughtsToken":0
-            }
-        
-        logger.debug("Loading AI Response from cache ended")
-    return ai_response,token_data,ti_cache_data,ai_cache_data
+        #Loading AI response checker
+        response_data= json.dumps({"alert":alert,"AbuseTI":alert_ti_cache[ip_to_check]['AbuseIntel'],"VTTI":alert_ti_cache[ip_to_check]['VTIntel']},sort_keys=True)
+        response_key=hashlib.md5(response_data.encode()).hexdigest()
+        response_to_check=ai_cache_data.get(response_key,"") if ai_cache_data else ""
+        if response_to_check != "":
+            alert_ai_cache={response_key:ai_cache_data.get(response_key,"")}
+            if alert_ai_cache[response_key]['AI_Response']['classification']!=alert_ai_cache[response_key]['Humanoverride'] and ai_cache_data.get(response_key,0).get('Humanoverride',0) =="" :
+                start_time=time.time()
+                alert['human_override']=alert_ai_cache[response_key]['Humanoverride']
+                ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache)
+                end_time=time.time()-start_time
+                timing.update({"AI_FromCache":end_time})
+            else:
+                logger.debug("Loading AI Response from cache started")
+                start_time=time.time()
+                alert_ai_cache={response_key:ai_cache_data.get(response_key,"")}
+                ai_response=alert_ai_cache[response_key]['AI_Response']
+                human_override=alert_ai_cache[response_key]['Humanoverride']
+                alert_ai_cache[response_key]['AI_CacheHit']+=1
+                end_time=time.time()-start_time
+                timing.update({"AI_FromCache":end_time})
+                token_data={
+                        "PromptToken":0,
+                        "TotalToken":0,
+                        "CandidateToken":0,
+                        "ToolUsePromptToken":0,
+                        "CacheToken":0,
+                        "ThoughtsToken":0
+                    }
+                
+                logger.debug("Loading AI Response from cache ended")
+        else:
+            alert['human_override']=""
+            ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache)
+            timing.update({"AI_FromCache":0})   
+        return ai_response,token_data,alert_ti_cache,alert_ai_cache,response_key
+    except Exception as e:
+        logger.error(e)
+
 
 def ai_content_generate(ai_prompt,max_retries=3):
     gemini_rate_limiter=GeminiRateLimiter()

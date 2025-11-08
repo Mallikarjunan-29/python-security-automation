@@ -8,6 +8,8 @@ logger=get_logger(__name__)
 def queue_alert(alerts):
     try:
         logger.debug("Alert Queue sorting start")
+        if isinstance(alerts,dict):
+            alerts=[alerts]
         priority_map={"Critical":1,"High":2,"Medium":3,"Low":4}
         for alert in alerts:
             alert['alert'].update({'prioritylevel':priority_map.get(alert.get("alert",10).get("severity",10),10)})
@@ -16,7 +18,7 @@ def queue_alert(alerts):
         return alerts
     except Exception as e:
         logger.error(e)
-        return None
+        return alerts
     
 def get_topalerts(alerts,number=10):
     try:
@@ -26,7 +28,7 @@ def get_topalerts(alerts,number=10):
         for count in range(number):
             print(f"Alert Number {count+1}")
             print("="*50)
-            print(f"Alert Name: {alerts[count]['alert_name']}")
+            print(f"Alert Name: {alerts[count]['alert']['name']}")
             print(f"AISeverity:{alerts[count]['AISeverity']}")
             print(f"AlertSeverity:{alerts[count]['AlertSeverity']}")
             print(f"AI Classification:{alerts[count]['Classification']}")
