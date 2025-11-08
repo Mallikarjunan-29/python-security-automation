@@ -428,9 +428,9 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 Built by [Your Name] as part of a 24-month DevSecOps journey.
 
-- LinkedIn: [Your Profile]
-- GitHub: [@yourusername]
-- Blog: [Your Blog]
+- LinkedIn: [\[Your Profile\]](https://www.linkedin.com/in/mallikarjunan-cybersecpro/)
+- GitHub: [@Mallikarjunan-29]
+
 
 ---
 
