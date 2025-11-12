@@ -17,17 +17,17 @@ from src.logger_config import get_logger
 logger=get_logger(__name__)
 import hashlib
 
-def build_prompt(alert,abuse_response,vt_response):
+def build_prompt(alert,abuse_response,vt_response,human_override):
     logger.debug("Prompt Building Started")
     """
     Takes Alert dictionary and builds a prompt
     """
-    human_override=f"- Analyst Override:{alert['human_override'] if 'human_override' in alert and alert['human_override']!="" else ""}"
+    prompt_human_override=f"- Analyst Override:{human_override}" if human_override!="" else ""
     prompt = f"""
 You are a SOC analyst
 Analyze this login alert
 - alert:{json.dumps(alert,indent=4)}
-{human_override}
+{prompt_human_override}
 
 This is what the threat intel feeds say about the IP
 AbuseIPDB:{abuse_response}
@@ -96,10 +96,10 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
         response_to_check=ai_cache_data.get(response_key,"") if ai_cache_data else ""
         if response_to_check != "":
             alert_ai_cache={response_key:ai_cache_data.get(response_key,"")}
-            if alert_ai_cache[response_key]['AI_Response']['classification']!=alert_ai_cache[response_key]['Humanoverride'] and ai_cache_data.get(response_key,0).get('Humanoverride',0) =="" :
+            if alert_ai_cache[response_key]['AI_Response']['classification']!=alert_ai_cache[response_key]['Humanoverride']:
                 start_time=time.time()
-                alert['human_override']=alert_ai_cache[response_key]['Humanoverride']
-                ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache)
+                human_override=alert_ai_cache[response_key]['Humanoverride']
+                ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache,human_override)
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
             else:
@@ -122,8 +122,8 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
                 
                 logger.debug("Loading AI Response from cache ended")
         else:
-            alert['human_override']=""
-            ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache)
+            human_override=""
+            ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache,human_override)
             timing.update({"AI_FromCache":0})   
         return ai_response,token_data,alert_ti_cache,alert_ai_cache,response_key
     except Exception as e:
@@ -243,12 +243,12 @@ def update_ti_cache(ti_cache_data,timing,ip_to_check):
     ti_cache_data.update({ip_to_check:data_to_cache})
     return abuse_response,vt_response
 
-def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data):
+def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data,human_override):
     for attempts in range(max_retries):
         try:
             logger.debug("Building Prompt for the alert")
             start_time=time.time()
-            ai_prompt=build_prompt(alert,abuse_response,vt_response)
+            ai_prompt=build_prompt(alert,abuse_response,vt_response,human_override)
             logger.debug("Generating AI response")                
             ai_response,token_data=    ai_content_generate(ai_prompt)
             end_time=time.time()-start_time
@@ -267,7 +267,7 @@ def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response
                 "TokenData":token_data,
                 "AI_CacheHit":0,
                 "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Humanoverride":alert['human_override'] if alert['human_override']!="" else ""
+                "Humanoverride":human_override if human_override !="" else ""
             }
             ai_cache_data.update({response_key:ai_data_to_cache})
             return ai_output,token_data
