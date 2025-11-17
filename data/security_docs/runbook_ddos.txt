@@ -1,0 +1,99 @@
+Title: Distributed Denial of Service Attack Response
+Severity: High
+MITRE ATT&CK: T1498, T1499
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network Infrastructure, Web Applications, Cloud
+Tools: DDoS Mitigation Service (Cloudflare, Akamai, AWS Shield), Firewall, Network Monitoring, SIEM
+DETECTION:
+
+Sudden spike in inbound traffic volume
+Increased bandwidth utilization (near or at capacity)
+High connection count to specific services
+Application slowness or unavailability
+Abnormal traffic patterns (SYN floods, UDP floods, HTTP floods)
+Traffic from botnet IP ranges
+Geographically distributed attack sources
+
+INVESTIGATION:
+
+Identify attack type:
+
+Volumetric (bandwidth exhaustion): ICMP flood, UDP flood, DNS amplification
+Protocol (state exhaustion): SYN flood, fragmented packets
+Application layer: HTTP GET/POST flood, Slowloris
+
+
+Analyze traffic characteristics:
+
+Source IPs and geographic distribution
+Target ports and services
+Packet types and patterns
+Attack traffic volume (Gbps/packets per second)
+
+
+Check network monitoring tools:
+
+Bandwidth graphs and utilization
+Dropped packet rates
+CPU/memory on network devices
+
+
+Review logs for attack indicators:
+
+Repeated connections from same sources
+Malformed packets or unusual patterns
+
+
+
+IMMEDIATE ACTIONS:
+
+Activate DDoS mitigation service (Cloudflare, Akamai, AWS Shield)
+Contact ISP for upstream filtering/blackholing
+Enable rate limiting on affected services
+Block obvious attack source IPs (if not distributed)
+Scale infrastructure if possible (cloud auto-scaling)
+
+CONTAINMENT:
+
+Implement geo-blocking if attack from specific regions
+Use traffic scrubbing services to filter malicious traffic
+Deploy challenge-response mechanisms (CAPTCHA) for web applications
+Enable SYN cookies for SYN flood mitigation
+Implement connection rate limiting per IP
+Reduce DNS TTL to facilitate rapid changes
+Consider temporarily reducing service functionality to core features
+
+POST-INCIDENT:
+
+Document attack timeline, duration, and impact
+Analyze traffic captures for attack patterns
+Calculate business impact (downtime, revenue loss)
+Review DDoS mitigation effectiveness
+Update runbooks with lessons from incident
+Monitor for follow-up attacks (DDoS often precedes other attacks)
+
+LESSONS LEARNED:
+
+Implement always-on DDoS protection
+Establish DDoS response team and escalation procedures
+Regular DDoS simulation exercises
+Over-provision bandwidth capacity
+Implement rate limiting and traffic filtering
+Distribute infrastructure across multiple providers/regions
+Maintain emergency contact list (ISP, DDoS mitigation vendors)
+
+METADATA:
+json{
+  "related_runbooks": "Network Scanning Runbook, Web Application Attack Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "botnet_ip_ranges",
+      "Action": "blocked",
+      "duration_in_days": 30,
+      "ckc_stage": "impact"
+    }
+  ]
+}

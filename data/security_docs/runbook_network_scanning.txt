@@ -1,0 +1,66 @@
+Title: Network Reconnaissance Activity
+Severity: High
+MITRE ATT&CK: T1046
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network infrastructure, Perimeter devices
+Tools: Firewall platforms, SIEM, Threat intelligence
+
+DETECTION THRESHOLDS:
+- Port scan: Identical port probed across 50+ hosts within 5 minutes
+- Host scan: 20+ ports probed on single system within 5 minutes
+- Network sweep: 100+ connection attempts across multiple targets and ports
+
+SCAN TYPE CLASSIFICATION:
+- Vertical scan: Multiple ports on single target
+- Horizontal scan: Single port across multiple targets
+- Network sweep: Comprehensive multi-port, multi-host reconnaissance
+
+DETECTION:
+- SIEM alert indicating reconnaissance activity from source addresses
+- External origin significantly more concerning than internal sources
+
+INVESTIGATION:
+- Extract scanning telemetry: Timeline, source addresses, target systems, probed ports
+- Firewall policy review: Rules permitting reconnaissance traffic
+- Threat intelligence correlation for attacking infrastructure
+
+IMMEDIATE ACTIONS:
+- Enforce 90-day network blocking for malicious sources (bidirectional)
+
+CONTAINMENT:
+- Isolate systems communicating with scan sources via EDR
+- Execute malware investigation for compromised infrastructure
+- If threat intelligence indicates campaign affiliation:
+  - Hunt for campaign TTPs across environment
+  - Search for campaign indicators organization-wide
+- Review and harden firewall policies for critical infrastructure
+
+CONTAINMENT VERIFICATION:
+- Confirm scan cessation after source blocking
+- Validate no backdoor communications from internal systems
+
+POST-INCIDENT:
+- Maintain centralized indicator repository
+- Comprehensive incident documentation including attack timeline and response
+
+LESSONS LEARNED:
+- Detection logic refinement
+- Campaign-based threat hunting if applicable
+- Indicator distribution to threat intelligence community
+- Critical infrastructure firewall policy audit and hardening
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Lateral Movement", "Exploitation Attempts"],
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "185.25.24.23",
+      "Action": "blocked",
+      "duration_in_days": 90,
+      "ckc_stage": "Reconnaissance"
+    }
+  ]
+}

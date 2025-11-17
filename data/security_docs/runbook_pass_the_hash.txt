@@ -1,0 +1,106 @@
+Title: Pass-the-Hash Attack Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1550.002
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Windows Endpoints, Active Directory
+Tools: EDR, SIEM, Windows Event Logs, Microsoft Defender for Identity
+DETECTION:
+
+Logon Event ID 4624 with Logon Type 3 (Network) or 9 (NewCredentials)
+NTLM authentication without corresponding password logon
+Lateral movement using NTLM hash
+Unusual service creation with SYSTEM privileges
+WMI or PsExec execution using stolen hashes
+Same user logged on to multiple systems simultaneously
+
+INVESTIGATION:
+
+Check Windows Security Event Logs:
+
+Event ID 4624 (Successful logon) - check logon type
+Event ID 4648 (Explicit credential usage)
+Event ID 4672 (Special privileges assigned)
+Source and destination systems
+
+
+Analyze authentication patterns:
+
+NTLM authentication vs Kerberos
+Logon type patterns (Type 3, 9 suspicious for admin accounts)
+Account used (local admin or domain admin?)
+No password logon event before hash usage
+
+
+Identify affected systems:
+
+Which systems were accessed via PtH?
+Lateral movement path
+What actions were performed on target systems?
+
+
+Check for credential dumping:
+
+Review Credential Dumping Runbook
+Was LSASS accessed on any systems?
+Hash stolen from compromised endpoint?
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate source system where hash was stolen
+Isolate target systems accessed via Pass-the-Hash
+Disable compromised accounts immediately
+Block lateral movement attempts
+
+CONTAINMENT:
+
+Force password reset for all compromised accounts
+Clear cached credentials on all affected systems
+Enable Credential Guard on endpoints
+Restrict NTLM authentication (prefer Kerberos)
+Remove local admin privileges where not needed
+Check for persistence mechanisms on accessed systems
+Review privileged account usage across environment
+
+POST-INCIDENT:
+
+Implement Local Administrator Password Solution (LAPS)
+Enable Protected Users security group for privileged accounts
+Disable NTLM authentication where possible
+Monitor for Pass-the-Hash attempts for 30 days
+Document attack path and compromised accounts
+
+LESSONS LEARNED:
+
+Implement Windows Defender Credential Guard
+Use LAPS for unique local admin passwords
+Enable Protected Process Light (PPL) for LSASS
+Prefer Kerberos over NTLM authentication
+Remove local admin rights from standard users
+Implement Privileged Access Workstations (PAWs)
+Monitor Event IDs 4624, 4648, 4672 for anomalies
+Network segmentation to limit lateral movement
+
+METADATA:
+json{
+  "related_runbooks": "Credential Dumping Runbook, Unusual Host Access Runbook, Lateral Movement Runbook",
+  "ioc": [
+    {
+      "Type": "technique",
+      "Value": "Pass-the-Hash",
+      "Action": "mitigated",
+      "duration_in_days": 0,
+      "ckc_stage": "lateral_movement"
+    },
+    {
+      "Type": "account",
+      "Value": "compromised_admin",
+      "Action": "password_reset",
+      "duration_in_days": 0,
+      "ckc_stage": "lateral_movement"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+Title: Data Destruction and Wiper Malware Response
+Severity: Critical
+MITRE ATT&CK: T1485, T1490
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, File Servers, Storage Systems
+Tools: EDR, SIEM, Backup Systems, Forensics Tools, Data Recovery
+DETECTION:
+
+Mass file deletion events across file servers
+Master Boot Record (MBR) or disk partition deletion
+Shadow copy deletion (vssadmin delete shadows)
+Overwriting of critical system files
+Database deletion or corruption
+Backup system deletion attempts
+Disk wiping utilities detected
+System boot failures across multiple endpoints
+
+INVESTIGATION:
+
+Check EDR logs for:
+
+Process performing file deletion or disk wiping
+User account or system context
+Files and directories targeted
+Timestamp and spread pattern
+Wiper malware signatures (if known variant)
+
+
+Identify affected systems:
+
+Number of endpoints affected
+File servers and shared storage impacted
+Databases destroyed or corrupted
+Backup systems accessed or deleted
+
+
+Determine wiper type:
+
+File-based wiper (deletes files, documents)
+Disk wiper (overwrites MBR, partitions)
+Database wiper (drops tables, corrupts data)
+Ransomware disguised as wiper
+
+
+Assess data loss:
+
+What data is unrecoverable?
+Are backups intact and accessible?
+Business impact of data destruction
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate affected systems immediately (network disconnect)
+DO NOT reboot systems (may complete MBR wipe)
+Block wiper malware hashes and C2 infrastructure
+Protect backup systems - take offline or air-gap
+Stop wiper processes if still active
+
+CONTAINMENT:
+
+Prevent spread to additional systems
+Isolate file servers and critical data repositories
+Segment network to protect unaffected systems
+Kill wiper processes on all endpoints
+Remove wiper malware following Malware Infection Runbook
+Check for additional persistence mechanisms
+
+POST-INCIDENT:
+
+Restore data from backups (verify backup integrity first)
+Rebuild systems from clean images if MBR wiped
+Document data loss and recovery timeline
+Report to law enforcement if destructive attack
+Notify legal/compliance teams
+Calculate business impact and downtime
+Forensic analysis of wiper malware
+
+LESSONS LEARNED:
+
+Implement 3-2-1 backup strategy (3 copies, 2 media, 1 offsite)
+Air-gapped or immutable backups to prevent deletion
+Regular backup testing and restoration drills
+EDR with anti-tampering for shadow copy protection
+File integrity monitoring on critical systems
+Network segmentation to limit wiper spread
+Incident response plan for data destruction scenarios
+Disaster recovery procedures regularly tested
+
+METADATA:
+json{
+  "related_runbooks": "Ransomware Attack Runbook, Malware Infection Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "wiper_malware.exe",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "impact"
+    },
+    {
+      "Type": "file_hash",
+      "Value": "wiper_hash_sha256",
+      "Action": "quarantined",
+      "duration_in_days": 0,
+      "ckc_stage": "impact"
+    }
+  ]
+}

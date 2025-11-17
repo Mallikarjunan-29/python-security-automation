@@ -1,0 +1,105 @@
+Title: Supply Chain Compromise Response
+Severity: Critical
+MITRE ATT&CK: T1195, T1199
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Software Development, Third-Party Vendors, Update Mechanisms
+Tools: Software Composition Analysis (SCA), SIEM, EDR, Vulnerability Scanners
+DETECTION:
+
+Malicious code detected in third-party software/library
+Suspicious updates from trusted vendors
+Integrity check failures for software packages
+Unexpected network connections from trusted applications
+Security advisories about compromised software supply chain
+Hash mismatches for software packages
+Digital signature verification failures
+
+INVESTIGATION:
+
+Identify affected software/vendor:
+
+Which applications/libraries are compromised?
+When was malicious version released?
+What is the attack vector (backdoor, trojan, malware)?
+
+
+Inventory affected systems:
+
+Which systems have compromised software installed?
+What versions are deployed?
+Are systems internet-facing or internal?
+
+
+Check vendor communications:
+
+Has vendor acknowledged compromise?
+Are patches/clean versions available?
+What is vendor's recommended remediation?
+
+
+Review software behavior:
+
+What malicious actions has software performed?
+Data exfiltration? C2 communications?
+Lateral movement or persistence mechanisms?
+
+
+Check threat intelligence for IOCs
+
+IMMEDIATE ACTIONS:
+
+Isolate systems running compromised software
+Block C2 domains/IPs associated with supply chain attack
+Halt deployment of affected software versions
+Quarantine malicious binaries
+
+CONTAINMENT:
+
+Uninstall compromised software versions
+Deploy clean versions or patches from vendor
+Verify integrity of all software installations (hash checks)
+Check for persistence mechanisms installed by malicious software
+Review all actions taken by compromised software (logs)
+Run Malware Infection Runbook if additional malware deployed
+
+POST-INCIDENT:
+
+Document all affected systems and remediation actions
+Notify affected customers/partners if applicable
+Review vendor security assessment process
+Update software inventory and version tracking
+Monitor for secondary attacks leveraging compromise
+Contact vendor for incident details and lessons learned
+
+LESSONS LEARNED:
+
+Implement software composition analysis (SCA)
+Verify digital signatures and hashes for all software
+Maintain software bill of materials (SBOM)
+Regular vendor security assessments
+Implement network segmentation to limit impact
+Automated vulnerability scanning for third-party components
+Incident response plan for supply chain scenarios
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Data Exfiltration Runbook, C2 over DNS Runbook",
+  "ioc": [
+    {
+      "Type": "file_hash",
+      "Value": "a1b2c3d4e5f6...",
+      "Action": "quarantined",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "domain",
+      "Value": "malicious-update-server.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}

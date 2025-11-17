@@ -1,0 +1,106 @@
+Title: VPN Compromise Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1133, T1078
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network Infrastructure, Remote Access
+Tools: VPN Logs, SIEM, Active Directory, EDR, Firewall
+DETECTION:
+
+VPN login from unusual geographic location
+Impossible travel (VPN logins from distant locations)
+VPN access from known malicious IPs
+Multiple failed VPN authentication attempts
+VPN access outside business hours without justification
+VPN vulnerability exploitation attempts
+Credential stuffing on VPN portal
+
+INVESTIGATION:
+
+Check VPN logs for:
+
+Source IP addresses and geolocation
+User accounts used for VPN access
+Timestamp and duration of connections
+MFA bypass or authentication anomalies
+
+
+Correlate with user activity:
+
+Contact user to verify legitimate access
+Check user's recent activity (file access, lateral movement)
+Review systems accessed via VPN
+Unusual data transfers during VPN session?
+
+
+Verify account compromise:
+
+Credential theft or phishing?
+Password in leaked credential databases?
+Recent password changes or suspicious logins?
+
+
+Check for VPN vulnerabilities:
+
+Are patches up to date?
+Known CVEs for VPN appliance?
+Exploitation attempts in logs?
+
+
+
+IMMEDIATE ACTIONS:
+
+Terminate suspicious VPN sessions immediately
+Disable compromised user accounts
+Block suspicious source IPs at firewall
+Enable enhanced MFA verification if not already active
+
+CONTAINMENT:
+
+Force password reset for compromised accounts
+Review all systems accessed via VPN for compromise
+Check for persistence mechanisms on VPN-accessed systems
+Patch VPN vulnerabilities if exploitation occurred
+Implement IP geofencing for VPN access
+Review VPN access logs for other anomalies
+
+POST-INCIDENT:
+
+Document unauthorized VPN access timeline
+Notify affected users of compromise
+Review VPN security configuration
+Monitor compromised accounts for 30 days
+Update VPN access policies
+
+LESSONS LEARNED:
+
+Enforce MFA for all VPN access
+Implement conditional access based on location/device
+Regular VPN software patching and updates
+Monitor for impossible travel scenarios
+VPN access baselines per user
+Certificate-based authentication for VPN
+Regular VPN security audits
+Limit VPN network access (principle of least privilege)
+
+METADATA:
+json{
+  "related_runbooks": "Brute Force Runbook, Compromised Cloud Account Runbook, Unusual Host Access Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "malicious_vpn_source",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "account",
+      "Value": "compromised_vpn_user",
+      "Action": "disabled",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

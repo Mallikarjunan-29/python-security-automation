@@ -1,0 +1,111 @@
+Title: Business Email Compromise Response
+Severity: Critical
+MITRE ATT&CK: T1566.002, T1534
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Email, Office 365, Financial Systems
+Tools: Email Security Gateway, Office 365 Security Center, SIEM, Email Forensics
+DETECTION:
+
+Executive/CFO email account compromise indicators
+Unusual wire transfer or payment requests
+Email forwarding rules to external addresses
+Invoice fraud reports from vendors
+Spoofed executive emails requesting transfers
+Email account login from unusual locations
+Mailbox delegation changes
+
+INVESTIGATION:
+
+Check compromised email account:
+
+Login history (IPs, locations, devices)
+Email forwarding rules and delegates
+Sent items for fraudulent requests
+Deleted items recovery
+Inbox rules and filters
+
+
+Review financial transaction requests:
+
+Requested transfer amounts and destinations
+Recipient bank account details
+Timeline of fraudulent requests
+Who received and acted on requests?
+
+
+Analyze email headers:
+
+Spoofed sender addresses vs legitimate
+SPF/DKIM/DMARC authentication results
+Source IP addresses
+
+
+Interview affected employees:
+
+Who received suspicious requests?
+Were any transfers completed?
+Normal approval processes followed?
+
+
+
+IMMEDIATE ACTIONS:
+
+Suspend compromised email account immediately
+Contact financial institution to halt wire transfers
+Alert accounting/finance team to verify all recent requests
+Remove malicious email forwarding rules
+Reset account password and revoke sessions
+
+CONTAINMENT:
+
+Review all email accounts for similar compromise indicators
+Check for additional compromised accounts
+Remove unauthorized mailbox delegates and permissions
+Verify no additional fraudulent emails sent
+Review financial transactions for unauthorized activity
+Enable MFA for all email accounts if not active
+Implement email authentication (SPF, DKIM, DMARC)
+
+POST-INCIDENT:
+
+Document financial losses and recovery efforts
+Report to FBI IC3 (Internet Crime Complaint Center)
+Notify cyber insurance carrier
+Employee training on BEC tactics
+Review and strengthen payment authorization procedures
+Legal consultation for fund recovery
+Notify affected vendors/partners if their information used
+
+LESSONS LEARNED:
+
+Mandatory MFA for all email accounts
+Email banner warnings for external emails
+Out-of-band verification for financial requests
+Regular security awareness training on BEC
+Implement email authentication (SPF, DKIM, DMARC)
+Dual approval process for wire transfers
+Email security gateway with advanced threat protection
+Monitor for unusual email forwarding rules
+
+METADATA:
+json{
+  "related_runbooks": "Phishing Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "email",
+      "Value": "spoofed-cfo@similar-domain.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "IP",
+      "Value": "unauthorized_login_ip",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

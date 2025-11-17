@@ -1,0 +1,115 @@
+Title: Domain Hijacking and DNS Compromise Response
+Severity: Critical
+MITRE ATT&CK: T1584.001, T1583.001
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: DNS Infrastructure, Domain Registrar, External
+Tools: DNS Monitoring, WHOIS, Domain Registrar Portal, SSL Certificate Monitoring
+DETECTION:
+
+Unauthorized DNS record changes
+WHOIS information modifications (registrant, nameservers)
+Domain transfer notifications from registrar
+SSL/TLS certificate mismatch alerts
+Email delivery failures (MX record changes)
+Website redirecting to unexpected locations
+Domain expiration alerts
+
+INVESTIGATION:
+
+Check domain registrar account:
+
+Recent login activity (IPs, timestamps)
+Account changes (email, password, 2FA)
+Transfer lock status
+Authorization code access
+
+
+Review DNS records:
+
+Compare current vs historical records
+When were changes made?
+What records were modified (A, MX, TXT, NS)?
+
+
+Check WHOIS history:
+
+Registrant information changes
+Nameserver modifications
+Domain transfer history
+
+
+Verify SSL certificates:
+
+Certificate validity and issuer
+Certificate transparency logs
+
+
+Check email for:
+
+Domain transfer authorization requests
+Password reset attempts
+Registrar notifications
+
+
+
+IMMEDIATE ACTIONS:
+
+Contact domain registrar immediately
+Lock domain transfers if not already locked
+Revert unauthorized DNS changes
+Reset registrar account password
+Enable/verify 2FA on registrar account
+Cancel any pending domain transfers
+
+CONTAINMENT:
+
+Update all registrar account security settings
+Enable registry lock (if available)
+Review all domains in portfolio for similar compromise
+Change admin contacts and email addresses
+Enable DNSSEC if not already active
+Implement CAA records to prevent unauthorized SSL issuance
+Review and rotate API keys for DNS management
+
+POST-INCIDENT:
+
+Document timeline of hijacking and restoration
+Notify users/customers of potential phishing risk
+Monitor for phishing sites using hijacked domain
+Legal action consideration for domain theft
+Review SSL certificates issued during compromise
+Implement domain monitoring service
+
+LESSONS LEARNED:
+
+Enable registrar account 2FA/MFA
+Use registry lock service for critical domains
+Separate email accounts for domain management
+Regular domain portfolio audits
+Monitor DNS changes with alerting
+Document domain recovery procedures
+Maintain offline backup of DNS records
+Use domain privacy protection services carefully
+
+METADATA:
+json{
+  "related_runbooks": "Phishing Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "domain",
+      "Value": "hijacked-domain.com",
+      "Action": "recovered",
+      "duration_in_days": 0,
+      "ckc_stage": "resource_development"
+    },
+    {
+      "Type": "IP",
+      "Value": "attacker_dns_server",
+      "Action": "documented",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+Runbook 14: Insider Threat
+Title: Insider Threat Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1530, T1213
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Network, Cloud, Data Repositories
+Tools: DLP, SIEM, User Behavior Analytics (UBA), Cloud Access Security Broker (CASB), EDR
+DETECTION:
+
+Mass downloading of sensitive documents
+Access to files outside normal job function
+USB device usage policy violations
+After-hours access to sensitive systems
+Copying data to personal cloud storage
+Database queries for large datasets
+Printing sensitive documents before departure
+Accessing competitor/recruiting websites
+
+INVESTIGATION:
+
+Build user profile and timeline:
+
+Employment status (resignation submitted? performance issues?)
+Recent access patterns vs historical baseline
+File access logs (what was accessed/downloaded?)
+Email activity (forwarding to personal email?)
+Badge access logs (physical locations, after-hours?)
+
+
+Check for data exfiltration:
+
+USB device connections
+Cloud storage uploads (Dropbox, OneDrive, Google Drive)
+Large email attachments sent externally
+Printing activity
+
+
+Correlate with HR:
+
+Performance reviews, disciplinary actions
+Resignation or termination pending?
+Access to sensitive projects/data legitimate?
+
+
+Review privileged access usage
+
+IMMEDIATE ACTIONS:
+
+DO NOT immediately confront user (may accelerate data theft)
+Suspend user accounts discreetly (after documenting activity)
+Block personal cloud storage and USB devices
+Enable more aggressive DLP monitoring for user
+Preserve forensic evidence (disk images, logs)
+
+CONTAINMENT:
+
+Revoke all system access (Active Directory, applications, VPN)
+Disable physical badge access
+Change passwords for shared accounts user accessed
+Review all data accessed during suspicious period
+Check for forwarding rules in email
+Verify no backdoor accounts created
+Collect all company devices from employee
+
+POST-INCIDENT:
+
+Conduct forensic analysis of employee devices
+Document all data accessed/exfiltrated
+Notify legal team for potential litigation
+Notify affected parties if sensitive data compromised
+Review and update access controls
+Exit interview and device collection procedures
+
+LESSONS LEARNED:
+
+Implement User Behavior Analytics (UBA)
+Automated alerts for abnormal data access patterns
+Enforce principle of least privilege
+Regular access reviews (quarterly)
+DLP policies for sensitive data handling
+Offboarding checklist and automation
+Employee monitoring policies (with legal review)
+
+METADATA:
+json{
+  "related_runbooks": "Data Exfiltration Runbook, Slow Exfiltration Runbook",
+  "ioc": [
+    {
+      "Type": "user_account",
+      "Value": "insider_username",
+      "Action": "disabled",
+      "duration_in_days": 0,
+      "ckc_stage": "exfiltration"
+    }
+  ]
+}

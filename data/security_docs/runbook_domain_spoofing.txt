@@ -1,0 +1,119 @@
+Title: Typosquatting and Domain Spoofing Response
+Severity: High
+MITRE ATT&CK: T1583.001, T1566
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Email, DNS, Web Applications
+Tools: Email Security Gateway, DNS Monitoring, Certificate Transparency Logs, Threat Intelligence
+DETECTION:
+
+Newly registered domains similar to company domain
+SSL certificates issued for lookalike domains
+Phishing emails from typosquatted domains
+Users visiting typosquatted domains (web proxy logs)
+Brand monitoring alerts for similar domains
+Homograph attacks using Unicode characters (compаny.com vs company.com)
+Domain similarity alerts from threat intelligence feeds
+User reports of suspicious emails or websites
+
+INVESTIGATION:
+
+Identify typosquatted domains:
+
+Domain names registered (examp1e.com, exarnple.com)
+Registration date and registrar information
+WHOIS details and privacy protection
+Hosting provider and IP addresses
+SSL certificates issued for domains
+
+
+Analyze malicious activity:
+
+Phishing websites hosted on typosquatted domains
+Email campaigns using spoofed domains
+Credential harvesting pages
+Malware distribution sites
+Brand impersonation for fraud
+
+
+Check for impacted users:
+
+Who received phishing emails from typosquatted domains?
+Did anyone visit malicious sites?
+Were credentials entered on fake login pages?
+Financial transactions or wire transfers requested?
+
+
+Review threat intelligence:
+
+Known campaigns using similar tactics
+Attribution to specific threat actors
+Related infrastructure and domains
+
+
+
+IMMEDIATE ACTIONS:
+
+Block typosquatted domains at email gateway and web proxy
+Alert users who received emails from typosquatted domains
+Take down phishing sites (abuse reports to hosting provider)
+Request domain suspension from registrar
+
+CONTAINMENT:
+
+Force password reset for users who visited phishing sites
+Monitor for credential stuffing using harvested credentials
+Block all similar typosquatted domains discovered
+Implement DMARC, SPF, DKIM for email authentication
+Register common typosquatting variations defensively
+Monitor Certificate Transparency logs for lookalike domains
+
+POST-INCIDENT:
+
+Document all typosquatted domains and phishing infrastructure
+Report to law enforcement and anti-phishing organizations
+Register defensive domain variations
+Implement brand monitoring and domain watching services
+Security awareness training on typosquatting and phishing
+Review email authentication effectiveness
+
+LESSONS LEARNED:
+
+Proactive registration of typosquatting variations
+Brand monitoring and domain watching services
+Certificate Transparency log monitoring
+DMARC, SPF, DKIM implementation and enforcement
+Email security gateway with lookalike domain detection
+User awareness training on verifying domains
+Browser protection against homograph attacks
+Legal team engagement for trademark protection
+Abuse reporting procedures to registrars and hosting providers
+
+METADATA:
+json{
+  "related_runbooks": "Phishing Runbook, Domain Hijacking Runbook, Business Email Compromise Runbook",
+  "ioc": [
+    {
+      "Type": "domain",
+      "Value": "compаny-login.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "resource_development"
+    },
+    {
+      "Type": "domain",
+      "Value": "comp4ny-portal.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "IP",
+      "Value": "typosquat_hosting_ip",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "delivery"
+    }
+  ]
+}

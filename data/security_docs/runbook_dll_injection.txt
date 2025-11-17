@@ -1,0 +1,105 @@
+Title: Reflective DLL Injection Detection and Response
+Severity: High
+MITRE ATT&CK: T1055.001
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Windows Systems
+Tools: EDR (Crowdstrike, Defender, Sentinel One), SIEM, Memory Forensics Tools, Volatility
+DETECTION:
+
+Process injection alerts from EDR
+Suspicious memory allocations (RWX permissions)
+Processes with unsigned code in memory
+PowerShell or remote threads injecting into processes
+CreateRemoteThread API calls
+Processes with mismatched memory and disk image
+Hollow process detection
+
+INVESTIGATION:
+
+Check EDR alerts for:
+
+Source process performing injection
+Target process being injected
+Memory addresses and protection flags
+Injection technique (CreateRemoteThread, QueueUserAPC, etc.)
+
+
+Analyze source process:
+
+Legitimate application or malware?
+Parent process and execution chain
+Command-line arguments
+File hash and signature
+
+
+Investigate target process:
+
+Why was this process targeted?
+What code is executing in its memory?
+Network connections from injected code?
+
+
+Memory forensics:
+
+Dump process memory
+Extract injected DLL/shellcode
+Analyze malicious code behavior
+Check for additional injections
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate infected endpoint immediately
+Kill source process performing injection
+Suspend target process for forensic analysis
+Block C2 communications if identified
+
+CONTAINMENT:
+
+Terminate all processes with memory injections
+Run full EDR scan for additional compromises
+Check for malware persistence mechanisms
+Verify no credential dumping occurred (if LSASS targeted)
+Follow Malware Infection Runbook for complete remediation
+Force password reset if credential theft suspected
+
+POST-INCIDENT:
+
+Document injection technique and IOCs
+Analyze extracted malicious code
+Update EDR detection rules
+Monitor for 20 days for reinfection
+Share IOCs with threat intelligence team
+
+LESSONS LEARNED:
+
+Enable EDR memory protection features
+Monitor for suspicious API calls (VirtualAllocEx, WriteProcessMemory)
+Implement application control to prevent unauthorized code execution
+Regular memory forensics training for IR team
+Enable credential guard to protect LSASS
+Process hollowing and injection detection tuning
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, DLL Side-Loading Runbook, Suspicious Powershell Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "injector.exe",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "defense_evasion"
+    },
+    {
+      "Type": "technique",
+      "Value": "CreateRemoteThread",
+      "Action": "monitored",
+      "duration_in_days": 90,
+      "ckc_stage": "execution"
+    }
+  ]
+}

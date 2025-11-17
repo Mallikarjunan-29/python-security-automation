@@ -1,0 +1,118 @@
+Title: Bulk Data Exfiltration Response
+Severity: Critical
+MITRE ATT&CK: T1041
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network perimeter, Endpoints, Cloud infrastructure
+Tools: DLP platform, Firewall logging, Cloud access security broker, SIEM, NetFlow, EDR
+
+DETECTION THRESHOLDS:
+- Large-volume transfers exceeding 1 GB to external destinations within one hour
+- Multiple file uploads surpassing 50 files in 30-minute window
+- Compressed or encrypted artifact transfers over 500 MB
+- Off-hours bulk transfers outside standard business hours
+- High-entropy files exceeding 7.5 entropy score
+
+DETECTION INDICATORS:
+- Massive outbound data movement to external infrastructure
+- File uploads to non-corporate cloud storage platforms
+- Compressed or encrypted containers transferred externally
+- After-hours data movement by user accounts
+- Base64-encoded payloads in HTTP POST requests
+- File transfer protocols to unexpected destinations
+
+DETECTION:
+- DLP alerts for sensitive information exiting network boundary
+- Firewall high-volume outbound connection logging
+- Cloud access security broker alerts for unauthorized uploads
+- SIEM correlation: File access followed by compression and transmission
+
+INVESTIGATION:
+- Firewall and proxy log analysis:
+  - Destination infrastructure identification
+  - Aggregate transfer volume calculation
+  - File type and compression status
+  - Protocol characterization
+  - Transfer timing analysis
+- User activity correlation:
+  - Pre-exfiltration file access patterns
+  - Privilege elevation timeline
+  - Authentication anomaly detection
+  - Remote access session analysis
+- Cloud service log examination:
+  - Personal storage account uploads
+  - File sharing platform activity
+  - Code repository interactions
+- Staging artifact analysis:
+  - Archive file identification on endpoints
+  - File metadata extraction
+  - Source file reconstruction
+- Insider threat indicator assessment:
+  - Employment status changes
+  - Disciplinary history
+  - Elevated access beyond role requirements
+
+IMMEDIATE ACTIONS:
+- Block destination infrastructure at network perimeter
+- Suspend account and revoke all access tokens
+- Isolate affected endpoint preventing further data loss
+- Preserve network traffic for forensic analysis
+- Escalate to management and legal counsel
+
+CONTAINMENT:
+- Exfiltrated data identification:
+  - DLP correlation for sensitive content
+  - File access log analysis
+  - Data classification determination
+- Malware investigation for ransomware scenarios
+- Cloud access token revocation
+- Data access control review and correction
+- Source file deletion analysis for evidence destruction
+
+CONTAINMENT VERIFICATION:
+- Confirm cessation of transfers from user and endpoint
+- Validate account suspension across all systems
+- Identify additional credentials under user control
+
+POST-INCIDENT:
+- Engage legal and compliance teams immediately
+- Execute external party notification if required
+- Deploy enhanced DLP policies organization-wide
+- Audit data classification and access controls
+- Conduct user behavior analytics review
+- Consider law enforcement engagement for criminal activity
+
+LEGAL AND COMPLIANCE:
+- Evaluate breach notification obligations
+- Preserve evidence chain of custody
+- Coordinate investigation scope with legal counsel
+
+LESSONS LEARNED:
+- Enable comprehensive DLP monitoring across egress points
+- Establish data transfer baselines per user and department
+- Deploy egress filtering for non-business destinations
+- Implement cloud access security broker
+- Deploy file integrity monitoring for sensitive repositories
+- Execute insider threat awareness programs
+
+METADATA:
+{
+  "related_runbooks": ["Slow-Rate Exfiltration", "Malware Investigation", "DNS C2 Channel"],
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "203.0.113.50",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Exfiltration"
+    },
+    {
+      "Type": "domain",
+      "Value": "attacker-storage.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Exfiltration"
+    }
+  ]
+}

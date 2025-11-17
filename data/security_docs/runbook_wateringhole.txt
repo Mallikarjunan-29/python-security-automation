@@ -1,0 +1,104 @@
+Title: Watering Hole Attack Detection and Response
+Severity: High
+MITRE ATT&CK: T1189
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Network, Web Proxy
+Tools: Web Proxy, EDR, SIEM, VirusTotal, URLhaus
+DETECTION:
+
+Multiple users infected after visiting same website
+Legitimate website serving malicious content
+Drive-by download attempts from trusted sites
+Exploit kit signatures detected
+Browser exploitation attempts
+JavaScript obfuscation detected on legitimate sites
+Redirects from trusted sites to malicious domains
+
+INVESTIGATION:
+
+Identify compromised website:
+
+Which website is delivering malicious content?
+Is it a frequently visited site by employees?
+Industry-specific or targeted at organization?
+
+
+Check web proxy logs:
+
+Who visited the compromised site?
+When did visits occur?
+What content was downloaded?
+Redirects to malicious domains?
+
+
+Analyze infected endpoints:
+
+Common infection vector (Flash, Java, browser exploit)?
+Malware payload downloaded
+Post-exploitation activity
+Lateral movement attempts
+
+
+Determine if targeted attack:
+
+Are other organizations in industry affected?
+APT group indicators?
+Custom malware or commodity tools?
+
+
+
+IMMEDIATE ACTIONS:
+
+Block compromised website at proxy/firewall
+Isolate infected endpoints
+Alert other users who visited the site
+Contact website owner to report compromise
+
+CONTAINMENT:
+
+Run Malware Infection Runbook on all affected endpoints
+Check all users who visited site for compromise indicators
+Update web filtering rules to block malicious content
+Patch browser and plugin vulnerabilities exploited
+Deploy browser security updates
+
+POST-INCIDENT:
+
+Document compromised website and attack timeline
+Share IOCs with industry partners and ISACs
+Monitor for continued targeting attempts
+Security awareness training on watering hole attacks
+Review web browsing policies
+
+LESSONS LEARNED:
+
+Web content filtering and sandboxing
+Browser isolation technology
+Disable unnecessary browser plugins (Flash, Java)
+Regular browser and OS patching
+Network segmentation to limit lateral movement
+Threat intelligence on industry-targeted attacks
+URL reputation monitoring
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Web Application Attack Runbook, Phishing Runbook",
+  "ioc": [
+    {
+      "Type": "url",
+      "Value": "compromised-industry-site.com/malicious.js",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "domain",
+      "Value": "exploit-kit-landing.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "exploitation"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+Title: Privilege Escalation Detection and Response
+Severity: High
+MITRE ATT&CK: T1068, T1134, T1548
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Active Directory
+Tools: EDR, SIEM, Windows Event Logs, Active Directory Auditing
+DETECTION:
+
+Event ID 4672 (Special privileges assigned to new logon)
+Event ID 4673 (Privileged service called)
+Event ID 4674 (Operation attempted on privileged object)
+Unusual UAC bypass attempts
+Token manipulation activities
+Service creation with SYSTEM privileges
+Scheduled task creation with elevated privileges
+Exploitation of kernel vulnerabilities
+
+INVESTIGATION:
+
+Check SIEM logs for:
+
+User account involved and normal privilege level
+Method of escalation (exploit, credential theft, token manipulation)
+Timestamp and affected system
+Processes running with elevated privileges
+
+
+Verify account legitimacy:
+
+Is user account compromised or malicious?
+Recent password changes or suspicious logins?
+Normal business justification for elevated access?
+
+
+Check for known privilege escalation exploits:
+
+Review installed patches and missing updates
+Check for CVEs matching system configuration
+
+
+Correlate with other alerts:
+
+Recent malware infections?
+Lateral movement attempts?
+Data access after escalation?
+
+
+
+IMMEDIATE ACTIONS:
+
+Suspend compromised user account in Active Directory
+Isolate affected endpoint to prevent lateral movement
+Kill processes running with suspicious elevated privileges
+Revoke temporary admin rights if granted
+
+CONTAINMENT:
+
+Review all privileged actions taken after escalation
+Check for persistence mechanisms (scheduled tasks, services, registry)
+Verify no additional accounts created with admin rights
+Remove malicious scheduled tasks, services, or registry entries
+Run Malware Infection Runbook if malware facilitated escalation
+Patch vulnerabilities exploited for escalation
+
+POST-INCIDENT:
+
+Force password reset for affected account
+Review privileged access management policies
+Audit all administrative group memberships
+Monitor account for 30 days for suspicious activity
+Document escalation method and remediation steps
+
+LESSONS LEARNED:
+
+Implement least privilege principle organization-wide
+Enable privileged access management (PAM) solution
+Update vulnerable software and apply security patches
+Monitor Windows Event IDs 4672, 4673, 4674 continuously
+Implement JIT (Just-In-Time) administration
+Regular vulnerability assessments
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Unusual Host Access Runbook",
+  "ioc": [
+    {
+      "Type": "exploit",
+      "Value": "CVE-2024-XXXXX",
+      "Action": "patched",
+      "duration_in_days": 0,
+      "ckc_stage": "privilege_escalation"
+    }
+  ]
+}

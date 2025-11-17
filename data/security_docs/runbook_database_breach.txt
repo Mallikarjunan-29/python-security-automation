@@ -1,0 +1,114 @@
+Title: Database Breach and Unauthorized Access Response
+Severity: Critical
+MITRE ATT&CK: T1552.001, T1530
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Database Servers, Cloud Databases, Data Repositories
+Tools: Database Activity Monitoring (DAM), SIEM, Database Audit Logs, DLP
+DETECTION:
+
+Unusual database queries (bulk exports, SELECT *)
+Access from unauthorized IP addresses
+Privilege escalation in database
+Failed authentication attempts to database
+Data exfiltration detected by DLP
+After-hours database access
+Suspicious stored procedure execution
+SQL injection detected by WAF
+
+INVESTIGATION:
+
+Check database audit logs:
+
+What queries were executed?
+Which user accounts accessed database?
+Source IP addresses and applications
+Timestamp and duration of access
+Tables accessed (sensitive data?)
+
+
+Determine scope of breach:
+
+What data was accessed/exfiltrated?
+How many records affected?
+Data sensitivity level (PII, PHI, financial?)
+Were records modified or deleted?
+
+
+Identify attack vector:
+
+SQL injection through web application?
+Stolen database credentials?
+Exposed database port to internet?
+Insider threat?
+
+
+Review authentication:
+
+Legitimate user account or compromised?
+Password spray or brute force before access?
+Multi-factor authentication bypass?
+
+
+
+IMMEDIATE ACTIONS:
+
+Suspend compromised database accounts
+Block unauthorized source IPs at firewall
+Rotate database credentials immediately
+Take database snapshots for forensics
+Enable enhanced audit logging
+
+CONTAINMENT:
+
+Patch SQL injection vulnerabilities in applications
+Remove internet exposure of database ports
+Implement network segmentation for database tier
+Review and restrict database user privileges
+Enable database firewall rules
+Check for backdoor accounts or stored procedures
+Verify no additional databases compromised
+
+POST-INCIDENT:
+
+Notify legal/compliance teams (GDPR, HIPAA, etc.)
+Document breach scope and affected data
+Prepare breach notification if required by regulation
+Offer credit monitoring if PII exposed
+Update database security policies
+Conduct security code review of applications
+Monitor for credential abuse or identity theft
+
+LESSONS LEARNED:
+
+Implement principle of least privilege for DB accounts
+Database activity monitoring and alerting
+Regular SQL injection testing of web applications
+Encrypt sensitive data at rest and in transit
+Multi-factor authentication for database access
+Network segmentation and firewall rules
+Disable unnecessary database features and functions
+Regular database security audits
+Remove default/unused database accounts
+
+METADATA:
+json{
+  "related_runbooks": "Data Exfiltration Runbook, Web Application Attack Runbook, Insider Threat Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "unauthorized_db_access_ip",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "collection"
+    },
+    {
+      "Type": "database_account",
+      "Value": "compromised_db_user",
+      "Action": "disabled",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

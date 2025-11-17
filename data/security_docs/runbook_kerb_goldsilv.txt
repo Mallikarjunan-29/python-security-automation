@@ -1,0 +1,120 @@
+Title: Kerberos Golden/Silver Ticket Attack Response
+Severity: Critical
+MITRE ATT&CK: T1558.001, T1558.002
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Active Directory, Domain Controllers, Endpoints
+Tools: EDR, SIEM, Windows Event Logs, Active Directory Auditing
+DETECTION:
+
+Kerberos ticket anomalies (Event ID 4769, 4768, 4624)
+Tickets with excessive lifetime (>10 hours)
+Service tickets for non-existent services
+Ticket requests from unusual locations/IPs
+Account authentication without corresponding logon event
+TGS requests with encryption downgrade (RC4 instead of AES)
+Forged PAC signatures
+
+INVESTIGATION:
+
+Check Windows Security Event Logs:
+
+Event ID 4768 (TGT requested)
+Event ID 4769 (Service ticket requested)
+Event ID 4624 (Successful logon)
+Event ID 4672 (Special privileges assigned)
+
+
+Analyze suspicious Kerberos tickets:
+
+Ticket lifetime (Golden tickets often have 10-year lifetime)
+Encryption type (RC4 vs AES256)
+Account used (deleted or non-existent accounts)
+Source IP and computer name
+
+
+Determine attack type:
+
+Golden Ticket: Full domain compromise, requires krbtgt hash
+Silver Ticket: Service-specific, requires service account hash
+
+
+Identify compromised accounts:
+
+Which accounts are being impersonated?
+Domain admin accounts targeted?
+
+
+Check for credential dumping:
+
+Was krbtgt or service account hash stolen?
+Review Credential Dumping Runbook
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate systems showing forged ticket usage
+Disable suspicious user accounts
+Block lateral movement from affected systems
+Enable enhanced Kerberos auditing
+
+CONTAINMENT:
+
+For Golden Ticket:
+
+Reset krbtgt account password TWICE (requires two resets)
+Wait 10 hours between resets for ticket expiration
+Force password reset for all privileged accounts
+Invalidate all existing Kerberos tickets
+
+
+For Silver Ticket:
+
+Reset compromised service account password
+Revoke existing service tickets
+Monitor service access for anomalies
+
+
+Check all Domain Controllers for compromise
+Review systems accessed via forged tickets
+
+POST-INCIDENT:
+
+Rebuild Domain Controllers if fully compromised
+Implement stricter Kerberos policies
+Enable AES encryption for Kerberos (disable RC4)
+Monitor Kerberos ticket requests for 60 days
+Document attack timeline and compromised accounts
+
+LESSONS LEARNED:
+
+Implement Microsoft ATA/Defender for Identity
+Monitor Event IDs 4768, 4769, 4624, 4672
+Regular krbtgt password rotation (annually)
+Disable RC4 encryption for Kerberos
+Protected Users security group for privileged accounts
+Kerberos armoring (FAST) implementation
+Enhanced Kerberos auditing and alerting
+
+METADATA:
+json{
+  "related_runbooks": "Credential Dumping Runbook, Unusual Host Access Runbook, Privilege Escalation Runbook",
+  "ioc": [
+    {
+      "Type": "account",
+      "Value": "krbtgt",
+      "Action": "password_reset",
+      "duration_in_days": 0,
+      "ckc_stage": "persistence"
+    },
+    {
+      "Type": "technique",
+      "Value": "Golden Ticket",
+      "Action": "mitigated",
+      "duration_in_days": 0,
+      "ckc_stage": "persistence"
+    }
+  ]
+}

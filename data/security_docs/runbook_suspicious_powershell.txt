@@ -1,0 +1,110 @@
+Title: Malicious PowerShell Activity
+Severity: High
+MITRE ATT&CK: T1059.001, T1027
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Windows endpoints
+Tools: EDR platforms, SIEM, Threat intelligence, Sandbox analysis
+
+SUSPICIOUS INDICATORS:
+- Command obfuscation: Base64 encoding, compression, heavy obfuscation
+- Evasion flags: ExecutionPolicy bypass, NoProfile, NonInteractive, hidden windows
+- Dangerous cmdlets: Invoke-WebRequest, DownloadString, Invoke-Expression, Net.WebClient
+- Anomalous parent processes: Office applications spawning PowerShell
+- Suspicious execution paths: User temporary directories instead of System32
+- Network activity from PowerShell processes
+- Extended command lines exceeding 1000 characters
+
+DETECTION:
+- SIEM alert from EDR platforms or Windows Event ID 4104 (script block logging)
+- Event ID 4103 indicating suspicious module loading
+- Analytical focus:
+  - Executed command content and structure
+  - Parent process identification and legitimacy
+  - Process execution path validation
+  - Command line argument analysis
+  - Network connection initiation
+
+INVESTIGATION:
+- Telemetry extraction: Timestamps, affected systems, command content, process relationships
+- Parent process legitimacy assessment:
+  - Expected sources: System services, scheduled tasks, administrative scripts
+  - Suspicious sources: Document viewers, browsers, email clients
+- Execution path validation:
+  - Legitimate: System32, Program Files
+  - Malicious: User AppData, Downloads, Temp directories
+- Command line analysis:
+  - Base64 decoding for encoded commands
+  - Pattern matching for suspicious cmdlets
+  - Credential theft indicator identification
+  - Persistence mechanism detection
+- Network activity investigation:
+  - Outbound connection enumeration
+  - Destination infrastructure identification
+  - Threat intelligence correlation
+- Filesystem impact assessment:
+  - Downloaded file discovery
+  - Executable or script creation
+  - Registry modification detection
+
+COMMAND CLASSIFICATION:
+- Legitimate: Clear purpose, expected parent, known script location
+- Suspicious: Obfuscated content, unexpected parent, internet downloads, encoding
+- Malicious: Malware downloads, credential theft, persistence creation, log deletion
+
+IMMEDIATE ACTIONS:
+- Terminate suspicious parent process via EDR platform
+- Kill PowerShell process if still executing
+- Isolate endpoint if malicious activity confirmed
+
+CONTAINMENT:
+- Reverse PowerShell-induced changes:
+  - Remove persistence: Registry modifications, scheduled tasks, startup items
+  - Delete downloaded artifacts
+  - Revert configuration modifications
+- Payload artifact removal:
+  - Recent executable discovery
+  - Hash calculation and reputation checking
+- C2 infrastructure blocking:
+  - Firewall IP blocking
+  - DNS sinkholing for malicious domains
+- Malware removal per investigation procedures
+- Process tree termination
+- Lateral movement hunting:
+  - Authentication log review
+  - Cross-endpoint PowerShell activity correlation
+
+FORENSIC ANALYSIS:
+- PowerShell history extraction
+- Transcription log review if enabled
+- Script block log analysis from Event Viewer
+
+POST-INCIDENT:
+- Extended 20-day monitoring for recurrence
+- Comprehensive incident documentation
+- IOC cataloging: Addresses, domains, hashes, command patterns
+- Organization-wide hunting for similar activity
+
+LESSONS LEARNED:
+- Detection rule enhancement with new patterns
+- PowerShell logging activation:
+  - Script Block Logging (Event ID 4104)
+  - Module Logging (Event ID 4103)
+  - Transcription for all sessions
+- Constrained Language Mode evaluation for high-risk users
+- Application whitelisting for PowerShell execution
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Credential Theft", "Lateral Movement"],
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "malicious-downloader.exe",
+      "Action": "terminated",
+      "duration_in_days": 0,
+      "ckc_stage": "Execution"
+    }
+  ]
+}

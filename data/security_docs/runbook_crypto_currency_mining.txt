@@ -1,0 +1,106 @@
+Title: Cryptojacking/Unauthorized Mining Response
+Severity: Medium
+MITRE ATT&CK: T1496
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Servers, Cloud Infrastructure
+Tools: EDR, SIEM, Network Monitoring, Cloud Cost Management
+DETECTION:
+
+Sustained high CPU usage (90-100%) on endpoints/servers
+Unusual process names related to mining (xmrig, cpuminer, minergate)
+Connections to known mining pools
+Increased electricity costs or cloud compute bills
+System performance degradation complaints
+Detection of mining-related domains in DNS logs
+Browser-based mining scripts detected
+
+INVESTIGATION:
+
+Check EDR for mining processes:
+
+Process names and command-line arguments
+Parent process (how was miner launched?)
+Network connections (mining pool addresses)
+File locations and hashes
+
+
+Review resource utilization:
+
+CPU/GPU usage patterns over time
+When did high utilization start?
+Which user accounts are running miners?
+
+
+Check for persistence mechanisms:
+
+Scheduled tasks
+Registry run keys
+Startup scripts
+Cron jobs (Linux)
+
+
+Identify infection vector:
+
+Malicious email attachment?
+Drive-by download from compromised website?
+Vulnerable web application?
+Compromised credentials?
+
+
+Check cloud environments for unauthorized resource creation
+
+IMMEDIATE ACTIONS:
+
+Kill mining processes immediately
+Block mining pool domains/IPs in firewall
+Isolate infected systems if malware detected
+
+CONTAINMENT:
+
+Remove mining software and associated files
+Delete persistence mechanisms (scheduled tasks, registry keys)
+Run Malware Infection Runbook if miner part of larger infection
+Patch vulnerabilities exploited for mining deployment
+Check for web shells or backdoors enabling reinfection
+Review cloud instances for unauthorized cryptocurrency mining
+
+POST-INCIDENT:
+
+Calculate compute resources stolen (hours, costs)
+Review endpoint protection effectiveness
+Monitor systems for 14 days for miner reappearance
+Update web filtering to block mining pools
+Security awareness training on cryptojacking
+
+LESSONS LEARNED:
+
+Implement process whitelisting where possible
+Block known mining pools at DNS/firewall level
+Enable browser-based mining script blocking
+Monitor resource utilization with baselines and alerts
+Regular vulnerability patching
+Web application security hardening
+Cloud cost anomaly detection
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Web Application Attack Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "xmrig.exe",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "execution"
+    },
+    {
+      "Type": "domain",
+      "Value": "xmr-pool.example.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}
