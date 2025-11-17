@@ -1,0 +1,108 @@
+Title: Shadow IT and Unauthorized Cloud Services Response
+Severity: Medium
+MITRE ATT&CK: T1567
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network, Cloud, SaaS Applications
+Tools: CASB, Web Proxy, Network Monitoring, SIEM, Cloud Discovery Tools
+DETECTION:
+
+Unauthorized cloud service usage detected
+Data uploads to non-approved cloud storage
+OAuth token grants to unknown applications
+Unmanaged devices accessing corporate data
+Cloud services bypassing security controls
+Personal cloud accounts used for corporate data
+SaaS applications not in approved software list
+
+INVESTIGATION:
+
+Identify unauthorized services:
+
+What cloud services/applications are being used?
+Who is using them and from which departments?
+What data is being stored or transmitted?
+How widespread is the usage?
+
+
+Check web proxy/CASB logs:
+
+URLs accessed and frequency
+Data upload volumes
+User accounts and authentication methods
+OAuth permissions granted
+
+
+Determine business justification:
+
+Why are users using shadow IT?
+Is there a legitimate business need?
+Are approved alternatives available?
+
+
+Assess security risks:
+
+What data is at risk? (PII, trade secrets, credentials)
+Are services GDPR/HIPAA compliant if required?
+Data residency and sovereignty concerns?
+Weak authentication or lack of MFA?
+
+
+
+IMMEDIATE ACTIONS:
+
+Block high-risk unauthorized cloud services at proxy/firewall
+Revoke OAuth tokens for critical shadow IT apps
+Contact users to understand business requirements
+Prevent data uploads to unauthorized cloud storage
+
+CONTAINMENT:
+
+Review all discovered shadow IT services for risk level
+Migrate data from shadow IT to approved solutions
+Implement CASB for cloud service visibility and control
+Update web filtering policies to block/warn on shadow IT
+Engage with users to understand and address needs
+Provide approved alternatives for legitimate use cases
+
+POST-INCIDENT:
+
+Document all shadow IT services discovered
+Create approved software and cloud service catalog
+Implement cloud service procurement process
+Security awareness training on shadow IT risks
+Regular cloud discovery scans for new shadow IT
+Update IT service offerings based on user needs
+
+LESSONS LEARNED:
+
+Deploy Cloud Access Security Broker (CASB)
+Regular cloud discovery and assessment
+Approved software catalog and procurement process
+User education on shadow IT risks
+Provide approved alternatives for common needs
+DLP policies to prevent data leakage to shadow IT
+OAuth token monitoring and management
+Shadow IT dashboard for IT security visibility
+
+METADATA:
+json{
+  "related_runbooks": "Data Exfiltration Runbook, Insider Threat Runbook, Cloud Storage Misconfiguration Runbook",
+  "ioc": [
+    {
+      "Type": "cloud_service",
+      "Value": "unauthorized-file-share.com",
+      "Action": "blocked",
+      "duration_in_days": 90,
+      "ckc_stage": "exfiltration"
+    },
+    {
+      "Type": "oauth_token",
+      "Value": "unauthorized_app_token",
+      "Action": "revoked",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

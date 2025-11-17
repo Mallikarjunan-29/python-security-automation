@@ -1,0 +1,104 @@
+Title: Rogue Wireless Access Point Detection and Response
+Severity: High
+MITRE ATT&CK: T1200, T1557
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Wireless Network, Physical Infrastructure
+Tools: Wireless IDS/IPS, Network Monitoring, Site Survey Tools, Wireshark
+DETECTION:
+
+Unauthorized wireless access point detected
+Duplicate SSID of corporate network
+Evil twin attack indicators
+Wireless clients connecting to unknown MAC addresses
+Unusual wireless traffic patterns
+Devices connected to non-corporate APs from inside facility
+Man-in-the-middle attack signatures
+
+INVESTIGATION:
+
+Identify rogue access point:
+
+SSID and BSSID (MAC address)
+Physical location via signal triangulation
+Is it bridging to corporate network?
+Encryption type and security settings
+
+
+Determine intent:
+
+Evil twin (identical SSID to corporate)?
+Credential harvesting portal?
+Network bridge for unauthorized access?
+Employee convenience device (unintentional)?
+
+
+Check for connected clients:
+
+Who connected to rogue AP?
+What data was transmitted?
+Credential theft or data interception?
+
+
+Physical investigation:
+
+Badge access logs near AP location
+Security camera footage
+Visual inspection of suspected area
+
+
+
+IMMEDIATE ACTIONS:
+
+Physically locate and disable rogue access point
+Alert security team for physical investigation
+Force disconnect clients from rogue AP
+Enable wireless IDS/IPS to block rogue AP
+
+CONTAINMENT:
+
+Remove rogue access point from facility
+Force password reset for users who connected to rogue AP
+Check network for unauthorized devices
+Review network access logs for suspicious activity
+Verify no additional rogue APs in facility
+
+POST-INCIDENT:
+
+Interview users who connected to rogue AP
+Review physical security procedures
+Document rogue AP details (make, model, configuration)
+Determine if insider threat or external attacker
+Notify legal/HR if employee involved
+
+LESSONS LEARNED:
+
+Deploy wireless intrusion detection system (WIDS)
+Regular wireless site surveys
+802.1X authentication for wireless networks
+Certificate-based authentication (no passwords)
+Physical security awareness for network equipment
+Monitoring for rogue APs 24/7
+Employee training on wireless security
+
+METADATA:
+json{
+  "related_runbooks": "Insider Threat Runbook, Network Scanning Runbook",
+  "ioc": [
+    {
+      "Type": "mac_address",
+      "Value": "AA:BB:CC:DD:EE:FF",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "ssid",
+      "Value": "Corporate-WiFi-Guest",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

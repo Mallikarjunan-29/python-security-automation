@@ -1,0 +1,114 @@
+Title: IoT Device Compromise Response
+Severity: High
+MITRE ATT&CK: T1200, T1542
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: IoT Devices, OT Networks, Physical Security Systems
+Tools: Network Monitoring, SIEM, IoT Security Platform, Network Traffic Analysis
+DETECTION:
+
+Unusual traffic from IoT devices (cameras, sensors, smart devices)
+IoT devices participating in botnet activity
+Default credentials detected on IoT devices
+Firmware tampering or unauthorized updates
+IoT device scanning internal network
+Unexpected outbound connections from IoT devices
+Failed authentication attempts on IoT management interfaces
+
+INVESTIGATION:
+
+Identify compromised IoT device:
+
+Device type, manufacturer, model
+Firmware version
+Default credentials in use?
+When was device deployed?
+
+
+Check network activity:
+
+C2 communications
+Scanning activity
+Data exfiltration (video feeds, sensor data)
+Botnet participation (DDoS attacks)
+
+
+Review device configuration:
+
+Open ports and services
+Management interface exposure
+Authentication mechanisms
+
+
+Check for known vulnerabilities:
+
+CVEs affecting device model
+Manufacturer security advisories
+
+
+Identify attack vector:
+
+Internet-facing device with default credentials?
+Exploitation of known vulnerability?
+Physical access compromise?
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate compromised IoT device from network
+Block C2 domains/IPs at network perimeter
+Disable remote access to IoT management interfaces
+Change default credentials on all IoT devices
+
+CONTAINMENT:
+
+Update firmware to latest secure version
+Factory reset compromised devices
+Segment IoT devices into separate VLAN
+Implement firewall rules restricting IoT traffic
+Disable unnecessary services on IoT devices
+Remove devices from internet exposure
+Check all similar IoT devices for compromise
+
+POST-INCIDENT:
+
+Document all compromised IoT devices
+Review IoT security architecture
+Implement IoT device inventory and monitoring
+Update network segmentation for IoT
+Replace devices that cannot be secured
+Monitor IoT devices for 30 days for reinfection
+
+LESSONS LEARNED:
+
+Change all default credentials on deployment
+Network segmentation for IoT devices
+Restrict internet access for IoT devices
+Regular firmware updates and patch management
+IoT security assessment during procurement
+Disable unnecessary features and services
+Monitor IoT device behavior with baseline
+Consider replacing insecure legacy IoT devices
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Network Scanning Runbook, DDoS Attack Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "iot_botnet_c2",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    },
+    {
+      "Type": "device",
+      "Value": "compromised_camera_mac",
+      "Action": "isolated",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

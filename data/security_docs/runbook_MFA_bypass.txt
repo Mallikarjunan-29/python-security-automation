@@ -1,0 +1,110 @@
+Title: Multi-Factor Authentication Bypass Response
+Severity: High
+MITRE ATT&CK: T1078, T1556
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Authentication Systems, Cloud Services, VPN
+Tools: SIEM, Authentication Logs, MFA Logs, User Behavior Analytics
+DETECTION:
+
+Excessive MFA push notifications sent to user
+MFA approved at unusual times (3 AM, weekends)
+Multiple MFA denials followed by approval
+MFA bypass via legacy authentication protocols
+MFA enrollment changes from unusual locations
+Impossible travel with successful MFA
+Social engineering of help desk to reset MFA
+MFA fatigue attack patterns (100+ push notifications)
+
+INVESTIGATION:
+
+Check MFA logs:
+
+Number of MFA requests sent to user
+Time pattern of MFA requests (repeated every minute?)
+Which MFA request was approved?
+Source IP of authentication after MFA approval
+User's location vs authentication location
+
+
+Interview affected user:
+
+Did they approve MFA push notification?
+Were they bombarded with requests?
+Did they contact help desk about MFA issues?
+Any phishing or social engineering attempts?
+
+
+Review authentication timeline:
+
+Failed login attempts before MFA fatigue?
+Account activity after MFA bypass
+Changes made to account post-compromise
+Access to sensitive data or systems
+
+
+Check for other attack vectors:
+
+SIM swapping for SMS-based MFA?
+Help desk social engineering for MFA reset?
+Legacy authentication protocols bypassing MFA?
+
+
+
+IMMEDIATE ACTIONS:
+
+Suspend compromised account immediately
+Force logout all active sessions
+Reset account password and MFA enrollment
+Block attacker IP addresses
+Alert help desk of potential social engineering attempts
+
+CONTAINMENT:
+
+Re-enroll user in MFA with stronger method (FIDO2 key)
+Disable legacy authentication protocols
+Review all account access during compromise window
+Check for unauthorized changes to account or data
+Implement number matching for push notifications
+Educate user on MFA fatigue attacks
+
+POST-INCIDENT:
+
+Document MFA bypass method and timeline
+Review help desk procedures for MFA resets
+Implement stricter controls for MFA changes
+Monitor account for 30 days for suspicious activity
+Update authentication policies
+
+LESSONS LEARNED:
+
+Implement MFA with number matching or FIDO2 keys
+Limit number of MFA requests per time period
+Alert users and security team on excessive MFA denials
+Disable legacy authentication protocols (SMTP AUTH, POP, IMAP)
+Conditional access policies (device compliance, location)
+Help desk verification procedures for MFA resets
+User training on MFA fatigue and social engineering
+Risk-based authentication (step-up authentication)
+
+METADATA:
+json{
+  "related_runbooks": "Account Takeover Runbook, Brute Force Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "mfa_bypass_attacker",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "technique",
+      "Value": "MFA Fatigue Attack",
+      "Action": "detected",
+      "duration_in_days": 90,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

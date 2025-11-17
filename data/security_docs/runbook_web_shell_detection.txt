@@ -1,0 +1,110 @@
+Title: Web Shell Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1505.003
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Web Servers, Application Servers
+Tools: WAF, File Integrity Monitoring, Web Server Logs, SIEM, EDR
+DETECTION:
+
+Suspicious file uploads to web directories (aspx, php, jsp)
+File integrity monitoring alerts for new files
+Unusual web server process activity (cmd.exe spawned by w3wp)
+POST requests to recently created files
+Web server executing system commands
+Files with obfuscated code or eval() functions
+Access to known web shell paths (/uploads/shell.php)
+
+INVESTIGATION:
+
+Identify web shell file:
+
+File name, path, and extension
+Creation timestamp and method (upload, FTP, exploit?)
+File hash and content analysis
+Check VirusTotal for known web shells
+
+
+Review web server logs:
+
+Who accessed the web shell?
+Source IPs and user agents
+Commands executed via web shell
+Data accessed or exfiltrated
+
+
+Analyze web shell capabilities:
+
+File upload/download
+Command execution
+Database access
+Network connectivity
+
+
+Determine entry vector:
+
+File upload vulnerability?
+SQL injection?
+Compromised FTP/SSH credentials?
+Exploited web application vulnerability?
+
+
+
+IMMEDIATE ACTIONS:
+
+Delete web shell files immediately
+Block source IPs accessing web shell
+Take vulnerable web application offline if actively exploited
+Change web server and application credentials
+
+CONTAINMENT:
+
+Patch web application vulnerabilities
+Review all files in web directories for additional shells
+Check for backdoor accounts created by web shell
+Verify database integrity (SQL injection?)
+Review all files modified during web shell activity
+Scan entire web server for malware
+Check for privilege escalation from web user
+
+POST-INCIDENT:
+
+Restore files from clean backups if necessary
+Implement file integrity monitoring (FIM)
+Update web application firewall rules
+Security code review of affected application
+Document web shell details and attack timeline
+Monitor for reinfection attempts
+
+LESSONS LEARNED:
+
+Implement robust input validation for file uploads
+File integrity monitoring on web directories
+Web application firewall with upload filtering
+Restrict file execution permissions in upload directories
+Regular web application security testing
+Disable unnecessary web server functionality
+Monitor for web shell signatures and behavior
+Least privilege for web server processes
+
+METADATA:
+json{
+  "related_runbooks": "Web Application Attack Runbook, Malware Infection Runbook, Data Exfiltration Runbook",
+  "ioc": [
+    {
+      "Type": "file",
+      "Value": "shell.aspx",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "persistence"
+    },
+    {
+      "Type": "IP",
+      "Value": "attacker_webshell_ip",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}

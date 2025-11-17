@@ -1,0 +1,103 @@
+Title: DLL Side-Loading Detection and Response
+Severity: High
+MITRE ATT&CK: T1574.002
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Windows Systems
+Tools: EDR (Crowdstrike, Defender, Sentinel One), SIEM, Sysmon, Process Monitor
+DETECTION:
+
+Legitimate signed applications loading unsigned/suspicious DLLs
+DLLs loaded from unexpected paths (temp, appdata, downloads)
+Known vulnerable applications loading malicious DLLs
+EDR alerts for DLL hijacking behavior
+Sysmon Event ID 7 (Image loaded) anomalies
+Applications loading DLLs with mismatched names/versions
+
+INVESTIGATION:
+
+Check EDR/Sysmon logs for:
+
+Parent process loading malicious DLL
+DLL file path and hash
+DLL signature and version info
+Timeline of DLL creation and loading
+
+
+Identify legitimate application:
+
+Is it a known vulnerable application?
+Check vendor advisories for DLL side-loading issues
+Verify application integrity
+
+
+Analyze malicious DLL:
+
+Submit hash to VirusTotal, Any.run
+Decompile or analyze in sandbox
+Check for C2 communications
+Identify malware family if known
+
+
+Check for related files:
+
+Additional DLLs in same directory
+Configuration files
+Payload executables
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate infected endpoint immediately
+Kill parent process loading malicious DLL
+Quarantine malicious DLL files
+Block C2 IPs/domains if identified
+
+CONTAINMENT:
+
+Delete malicious DLL and related files
+Restore legitimate DLL if replaced
+Check all systems for same DLL hash
+Verify application integrity and reinstall if necessary
+Run Malware Infection Runbook for complete system analysis
+Check for persistence mechanisms
+
+POST-INCIDENT:
+
+Document vulnerable application and DLL details
+Update application or apply vendor patches
+Monitor for DLL side-loading attempts
+Collect IOCs for threat intelligence
+Write incident summary
+
+LESSONS LEARNED:
+
+Application whitelisting with DLL verification
+Monitor DLL loading from suspicious paths
+Keep applications updated to prevent known DLL hijacking
+Enable SYSMON Event ID 7 logging
+Implement DLL signature verification
+Regular EDR rule tuning for DLL anomalies
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Reflective DLL Injection Runbook",
+  "ioc": [
+    {
+      "Type": "dll",
+      "Value": "malicious_version.dll",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "defense_evasion"
+    },
+    {
+      "Type": "file_hash",
+      "Value": "abc123def456...",
+      "Action": "quarantined",
+      "duration_in_days": 0,
+      "ckc_stage": "execution"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+Title: Web Application Attack Response
+Severity: High
+MITRE ATT&CK: T1190, T1133
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Web Servers, Application Layer
+Tools: WAF (Cloudflare, Imperva, F5), Web Server Logs, SIEM, Burp Suite
+DETECTION:
+
+WAF alerts for SQL injection, XSS, command injection
+Abnormal HTTP status codes (500 errors spike)
+Unusual POST requests to admin endpoints
+File upload attempts to restricted directories
+Path traversal attempts (../../etc/passwd)
+Authentication bypass attempts
+Automated scanning tools detected (SQLMap, Nikto, OWASP ZAP)
+
+INVESTIGATION:
+
+Check WAF logs for:
+
+Attack type (SQLi, XSS, RCE, file upload)
+Source IP addresses and geolocation
+Target URLs and parameters attacked
+Attack payload details
+
+
+Review web server logs:
+
+Successful vs blocked requests
+User agents (automated tools?)
+Request frequency and patterns
+
+
+Check application logs:
+
+Did any attacks bypass WAF?
+Database query errors indicating SQLi success?
+Unusual administrative actions
+
+
+Check threat intel on source IPs
+
+IMMEDIATE ACTIONS:
+
+Block attacking IP addresses in WAF/firewall
+Enable stricter WAF rules for affected endpoints
+Take vulnerable endpoint offline if actively exploited
+Change database credentials if SQLi suspected
+
+CONTAINMENT:
+
+Patch vulnerable application code or update software
+Review application for web shells or backdoors
+Check database for unauthorized data access/modifications
+Verify no admin accounts created by attacker
+Review file system for uploaded malicious files
+Check for privilege escalation from web user to system
+
+POST-INCIDENT:
+
+Conduct security code review of affected application
+Implement input validation and output encoding
+Deploy security patches for web application framework
+Monitor for continued attack attempts
+Document attack vectors and successful exploits
+Notify affected users if data breach occurred
+
+LESSONS LEARNED:
+
+Implement secure coding practices (OWASP Top 10)
+Regular web application vulnerability scanning
+Enable aggressive WAF blocking mode
+Implement rate limiting on critical endpoints
+Security testing during development lifecycle
+Web application firewall rule tuning
+
+METADATA:
+json{
+  "related_runbooks": "Data Exfiltration Runbook, Network Scanning Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "123.45.67.89",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "exploitation"
+    },
+    {
+      "Type": "url",
+      "Value": "/admin/shell.php",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "exploitation"
+    }
+  ]
+}

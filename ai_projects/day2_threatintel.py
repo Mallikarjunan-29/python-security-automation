@@ -16,8 +16,8 @@ logger=get_logger(__name__)
 def abuseip_lookup(ip,maxretries=3):
     #AbuseDB IP LookUP functionality
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
-        logger.debug("ABUSEIPDB RESPONSE: IP is a private IP")
-        return "IP is a private IP"
+        logger.debug(f"ABUSEIPDB RESPONSE: {ip} is a private IP")
+        return {"ip":f"{ip} is a private IP","AbuseConfidenceScore":0}
     for retries in range(maxretries):
         try:
             logger.debug("Abuse Lookup started")
@@ -71,7 +71,7 @@ def vtip_lookup(ip,maxretries=3):
     logger.debug("VT Lookup Started")
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
         logger.debug("VT RESPONSE: IP is a private IP")
-        return "IP is a private IP"
+        return {"ip":f"{ip} is a private IP","Reputation":100}
     vt_dict={}
     #VT LookUP functionality
     for retries in range(maxretries):
@@ -115,10 +115,231 @@ def vtip_lookup(ip,maxretries=3):
                 continue
             logger.error(e)
             return None
-        
+
 def ip_lookup(ip):
     abuse_response=abuseip_lookup(ip)
     vt_response=vtip_lookup(ip)
     return abuse_response,vt_response
 #ip_lookup('203.0.113.50')
 
+def url_lookup(url):
+    logger.debug("Url Lookup started")
+    vt_response=vt_url_response(url)
+    haus_response=url_haus_response(url)
+    logger.debug("Url Lookup ended")
+    return vt_response,haus_response
+
+def vt_url_response(url,maxretries=3):
+    logger.debug("VT URL lookup start ")
+    for retries in range(maxretries):
+        try:
+            vt_key=os.getenv("VTKEY")
+            if not vt_key:
+                raise ValueError("API Key Not found for VirusTotal")
+            
+            #VT API Call parameters
+            url_scan_url=f"https://www.virustotal.com/api/v3/urls"
+            headers = {
+                "accept": "application/json",
+                "x-apikey":vt_key ,
+                "content-type": "application/x-www-form-urlencoded"
+            }
+            
+            payload={
+                    "url":url,
+            }
+            url_scan_response=requests.post(url_scan_url,headers=headers,data=payload,timeout=10) #VT API call
+            url_scan_response.raise_for_status() # Throws error for all codes >400
+            scan_results={}
+            if url_scan_response.status_code==200:
+                if url_scan_response.ok:
+                    logger.debug("VT URL polling start ")
+                    results=poll_results(url_scan_response.json()['data']['links']['self'],{ "accept": "application/json","x-apikey": vt_key})
+                    logger.debug("VT URL polling end ")
+            scan_results={
+                "url":url,
+                "stats":results['data']['attributes']['stats'],
+            }
+            #logger.info(vt_response.text)
+            logger.debug("VT URL lookup ended ")
+            return scan_results
+        except ValueError as e:
+            logger.error(e)
+            print(f"API Key not found:{e}")
+            return None
+        except Exception as e:
+            if e.response.status_code==429:
+                waittime=2**retries
+                time.sleep(waittime)
+                if retries==maxretries-1:
+                    logger.error(f"Max retries reached for the url: {url}")
+                continue
+            logger.error(e)
+            return None
+
+
+
+def url_scan_response(url,maxretries=3):
+    logger.debug("URL scan response start ")
+    for retries in range(maxretries):
+        try:
+            url_scan_key=os.getenv("URLSCANKEY")
+            if not url_scan_key:
+                raise ValueError("API Key Not found for VirusTotal")
+            
+            #VT API Call parameters
+            url_scan_url=f"https://urlscan.io/api/v1/scan"
+            headers = {"Content-Type": "application/json",
+                       "api-key":url_scan_key}
+            payload={
+                    "url":url,
+                    "visibility": "public",
+                    "tags":["Testing","API"]
+            }
+            url_scan_response=requests.post(url_scan_url,headers=headers,json=payload,timeout=10) #VT API call
+            url_scan_response.raise_for_status() # Throws error for all codes >400
+            scan_results={}
+            if url_scan_response.status_code==200:
+                logger.debug("URL scan polling start ")
+                results=poll_results(url_scan_response.json()['api'],{"api-key":url_scan_key})
+                logger.debug("URL scan polling end ")
+            scan_results={
+                "url":url,
+                "malicious":results['stats']['malicious'],
+                "verdicts":results['verdicts']['overall']
+            }
+            #logger.info(vt_response.text)
+            logger.debug("URL scan response start ")
+            return scan_results
+        except ValueError as e:
+            logger.error(e)
+            print(f"API Key not found:{e}")
+            return None
+        except Exception as e:
+            if e.response.status_code==429:
+                waittime=2**retries
+                time.sleep(waittime)
+                if retries==maxretries-1:
+                    logger.error(f"Max retries reached for the url: {url}")
+                continue
+            logger.error(e)
+            return None
+
+
+
+def url_haus_response(url,maxretries=3):
+     logger.debug("URL haus lookup start ")
+     for retries in range(maxretries):
+        try:
+            url_scan_key=os.getenv("URLHAUS")
+            if not url_scan_key:
+                raise ValueError("API Key Not found for VirusTotal")
+            
+            #VT API Call parameters
+            url_scan_url=f"https://urlhaus-api.abuse.ch/v1/url/"
+            headers = {"Auth-Key":url_scan_key}
+            data={
+                    "url":url}
+            
+            url_haus_response=requests.post(url_scan_url,data,headers=headers,timeout=10) #VT API call
+            url_haus_response.raise_for_status() # Throws error for all codes >400
+            
+            haus_response={}
+            if url_haus_response.status_code==200:
+                url_haus_response=url_haus_response.json()
+                if url_haus_response.get("query_status",0)=='ok':
+                    haus_response={
+                        "verdict":"malicious",
+                        "url_status":url_haus_response.get("url_status",0),
+                        "threat":url_haus_response.get("threat",0),
+                        "blacklists":url_haus_response.get("blacklists",0)
+                    }
+
+                logger.debug("URL haus lookup ended ")
+                return haus_response    
+            #logger.info(vt_response.text)
+            
+            
+        except ValueError as e:
+            logger.error(e)
+            print(f"API Key not found:{e}")
+            return None
+        except Exception as e:
+            if e.response.status_code==429:
+                waittime=2**retries
+                time.sleep(waittime)
+                if retries==maxretries-1:
+                    logger.error(f"Max retries reached for the url: {url}")
+                continue
+            logger.error(e)
+            return None
+
+def poll_results(url,headers,max_wait=60,interval=3):
+    logger.debug("polling started")
+    waited=0
+    attempts=0
+    while waited<max_wait:
+        attempts+=1
+        response=requests.get(url=url,headers=headers,timeout=10)
+        if response.status_code==200:
+            logger.debug("polling ended")
+            return response.json()
+        sleep_time=interval*(attempts+1)
+        time.sleep(sleep_time)
+        waited+=sleep_time
+
+
+
+def vt_domain_response(domain,maxretries=3):
+    logger.debug("URL scan response start ")
+    for retries in range(maxretries):
+        try:
+            vt_key=os.getenv("VTKEY")
+            if not vt_key:
+                raise ValueError("API Key Not found for VirusTotal")
+            
+            #VT API Call parameters
+            url_scan_url=f"https://www.virustotal.com/api/v3/domains/{domain}"
+            headers = {
+                "accept": "application/json",
+                "x-apikey":vt_key 
+            }
+            url_scan_response=requests.get(url_scan_url,headers=headers,timeout=10) #VT API call
+            url_scan_response.raise_for_status() # Throws error for all codes >400
+            scan_results={}
+            if url_scan_response.status_code==200:
+                
+                vt_json=url_scan_response.json()
+                vt_data=vt_json.get("data",{})
+                vt_attributes=vt_data.get("attributes",{})
+                
+                vt_dict={
+                    "Domain":vt_data.get("id",0),
+                    "Owner":vt_attributes.get("registrar",""),
+                    "Stats":vt_attributes.get("last_analysis_stats",{}),
+                    "Reputation":vt_attributes.get("reputation",0)
+                }
+            #logger.info(vt_response.text)
+            logger.debug("URL scan response start ")
+            return vt_dict
+        except ValueError as e:
+            logger.error(e)
+            print(f"API Key not found:{e}")
+            return None
+        except Exception as e:
+            if e.response.status_code==429:
+                waittime=2**retries
+                time.sleep(waittime)
+                if retries==maxretries-1:
+                    logger.error(f"Max retries reached for the url: {domain}")
+                continue
+            logger.error(e)
+            return None
+
+if __name__=="__main__":
+   #vt_url_response("http://8.148.5.67/02.08.2022.exe")
+   vt_domain_response("bach.walnutsteg.ru")
+   """ scan_response=url_scan_response("http://8.148.5.67/02.08.2022.exe") 
+   haus_response= url_haus_response("http://8.148.5.67/02.08.2022.exe")
+   print(scan_response)
+   print(haus_response)"""

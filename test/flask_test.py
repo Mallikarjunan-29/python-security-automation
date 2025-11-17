@@ -103,25 +103,27 @@ def analyze():
         resultset=[]
         if resultlist:
             for results in resultlist:
+                ti_values=[]
+                if results.get('TI_Cache',0)!=0:
+                    for values in results['TI_Cache'].values():
+                        ti_values.append(values)
+                ai_values=[]
+                if results.get('AI_Cache',0)!=0:
+                    for values in results['AI_Cache'].values():
+                        ai_values.append(values)
+                
                 data_to_add={
-                    "alert":{
-                        "user":results["alert"]["alert"]["user"],
-                        "source_ip":results["alert"]["alert"]["source_ip"],
-
-                    },
                     "classification":results["Classification"],
                     "confidence":results["Confidence"],
-                    "severity":results["AlertSeverity"],
-                    "prioritylevel":results["PriorityLevel"],
+                    "severity":results["AISeverity"],
                     "reasoning":results["Reasoning"],
-                    "threat_intel":results["TI_Cache"][results["alert"]["alert"]["source_ip"]],
-                    "ai_cache_hit":results['AI_Cache'][results['AIResponseKey']]['AI_CacheHit'],
+                    "threat_intel":ti_values if ti_values else "",
+                    "ai_cache_hit":ai_values if ai_values else "",
                     "performance":{
                         "processing_time":total_time,
-                        "ai_from_cache":"true" if results['AI_Cache'][results['AIResponseKey']]['AI_CacheHit']!=0 else "false",
-                        "ti_from_cache":"true" if results["TI_Cache"][results["alert"]["alert"]["source_ip"]]['CacheHit']!=0 else "false",
                         "total_cost":f"${results['TimingBreakDown']['CalculateCost']}"
-                    }
+                    },
+                    "runbook":results['runbooks']
                 }
                 resultset.append(data_to_add)
             last_request_info={
@@ -166,32 +168,31 @@ def batch_process():
             if resultlist:
                 for results in resultlist:
                     logger.debug(f"documenting alert {alerts}")
-                    user=results.get('alert','0').get('alert','0').get('user','0')
-                    source_ip=results.get('alert','0').get('alert','0').get('source_ip','0')
                     true_positive+=1 if results["Classification"] =="TRUE_POSITIVE" else 0
                     false_positive+=1 if results["Classification"] =="FALSE_POSITIVE" else 0
                     needs_review+=1 if results["Classification"] =="NEEDS_REVIEW" else 0
                     total_cost+=float(results['TimingBreakDown']['CalculateCost'])
-                    ai_cache_hit+=1 if results['AI_Cache'][results['AIResponseKey']]['AI_CacheHit']!=0 else 0
-                    ti_cache_hit+=1 if results["TI_Cache"][results["alert"]["alert"]["source_ip"]]['CacheHit']!=0 else 0
+                    ti_values=[]
+                    if results.get('TI_Cache',0)!=0:
+                        for values in results['TI_Cache'].values():
+                            ti_values.append(values)
+                    ai_values=[]
+                    if results.get('AI_Cache',0)!=0:
+                        for values in results['AI_Cache'].values():
+                            ai_values.append(values)
+                    
                     data_to_add={
-                        "alert":{
-                            "user":user if user!='0' else "None",
-                            "source_ip":source_ip if source_ip!='0' else "None"
-                        },
                         "classification":results["Classification"],
                         "confidence":results["Confidence"],
-                        "severity":results["AlertSeverity"],
-                        "prioritylevel":results["PriorityLevel"],
+                        "severity":results["AISeverity"],
                         "reasoning":results["Reasoning"],
-                        "threat_intel":results["TI_Cache"][results["alert"]["alert"]["source_ip"]],
-                        "ai_cache_hit":results['AI_Cache'][results['AIResponseKey']]['AI_CacheHit'],
+                        "threat_intel":ti_values if ti_values else "",
+                        "ai_cache_hit":ai_values if ai_values else "",
                         "performance":{
-                            "processing_time":results['TotalTime'],
-                            "ai_from_cache":"true" if results['AI_Cache'][results['AIResponseKey']]['AI_CacheHit']!=0 else "false",
-                            "ti_from_cache":"true" if results["TI_Cache"][results["alert"]["alert"]["source_ip"]]['CacheHit']!=0 else "false",
+                            "processing_time":total_time,
                             "total_cost":f"${results['TimingBreakDown']['CalculateCost']}"
-                        }
+                        },
+                        "runbook":results['runbooks']
                     }
                     resultset.append(data_to_add)
                 final_result={

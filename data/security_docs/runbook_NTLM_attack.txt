@@ -1,0 +1,109 @@
+Title: NTLM Relay Attack Detection and Response
+Severity: High
+MITRE ATT&CK: T1557.001
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Active Directory, Windows Network
+Tools: EDR, SIEM, Network Traffic Analysis, Windows Event Logs, Wireshark
+DETECTION:
+
+SMB signing disabled on endpoints/servers
+NTLM authentication from unexpected sources
+Same user authenticating to multiple systems simultaneously
+Relay tools detected (Responder, ntlmrelayx, Inveigh)
+LLMNR/NBT-NS poisoning attempts
+Authentication requests with no corresponding user logon
+SMB traffic to Domain Controllers from unusual sources
+Event ID 4624 Logon Type 3 with suspicious source
+
+INVESTIGATION:
+
+Check network traffic logs:
+
+LLMNR/NBT-NS broadcast responses (name poisoning)
+SMB authentication flows and relay chain
+Source and destination IPs in relay attack
+Protocols used (SMB, HTTP, LDAP)
+
+
+Review Windows Event Logs:
+
+Event ID 4624 (Logon) from relay destination
+Event ID 4648 (Explicit credentials)
+Source workstation vs actual user location
+
+
+Identify attacker position:
+
+Which system is performing relay attack?
+Man-in-the-middle position in network?
+Compromised endpoint or rogue device?
+
+
+Determine what was accessed:
+
+Files accessed via relayed authentication
+Administrative actions performed
+Domain Controller access via relay?
+Credential material captured
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate system performing NTLM relay
+Block attacker MAC/IP address at network layer
+Enable SMB signing on all systems immediately
+Disable LLMNR and NBT-NS via Group Policy
+
+CONTAINMENT:
+
+Force SMB signing on all domain-joined systems
+Disable NTLM authentication where possible (Kerberos only)
+Enable Extended Protection for Authentication (EPA)
+Check all systems accessed via relay for compromise
+Force password resets for relayed accounts
+Remove relay tools from attacker system
+Enable LDAP channel binding and signing
+
+POST-INCIDENT:
+
+Audit all systems for SMB signing configuration
+Document relay attack path and accessed resources
+Review network segmentation for man-in-the-middle prevention
+Monitor for LLMNR/NBT-NS traffic (should be zero)
+Implement NTLM auditing for future detection
+
+LESSONS LEARNED:
+
+Require SMB signing on all systems (clients and servers)
+Disable LLMNR and NBT-NS via Group Policy
+Prefer Kerberos over NTLM authentication
+Enable Extended Protection for Authentication (EPA)
+LDAP signing and channel binding enforcement
+Network segmentation to prevent relay attacks
+Deploy NTLM relay detection tools
+Regular authentication security audits
+Monitor for tools like Responder, ntlmrelayx
+
+METADATA:
+json{
+  "related_runbooks": "Pass-the-Hash Runbook, Credential Dumping Runbook, Unusual Host Access Runbook",
+  "ioc": [
+    {
+      "Type": "tool",
+      "Value": "Responder.py",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "credential_access"
+    },
+    {
+      "Type": "technique",
+      "Value": "NTLM Relay",
+      "Action": "mitigated",
+      "duration_in_days": 0,
+      "ckc_stage": "lateral_movement"
+    }
+  ]
+}

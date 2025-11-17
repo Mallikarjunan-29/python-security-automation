@@ -1,0 +1,108 @@
+Title: Malicious Browser Extension Detection and Response
+Severity: Medium
+MITRE ATT&CK: T1176, T1539
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Browsers (Chrome, Firefox, Edge)
+Tools: EDR, Browser Management, SIEM, Web Proxy
+DETECTION:
+
+Unauthorized browser extension installations
+Extension requesting excessive permissions (read all data, modify content)
+Extensions redirecting web traffic or injecting ads
+Session cookies stolen by malicious extension
+Extension communicating with suspicious domains
+Credential harvesting by extension
+Cryptocurrency mining extensions
+Extension installed via social engineering or malware
+
+INVESTIGATION:
+
+Identify malicious extension:
+
+Extension name, ID, and version
+Permissions requested by extension
+When was extension installed?
+How many users have extension installed?
+
+
+Check extension behavior:
+
+Network connections from extension
+Data being exfiltrated (cookies, credentials, form data)
+Web page modifications or injections
+Cryptocurrency mining activity
+
+
+Review installation method:
+
+User installed voluntarily (social engineering)?
+Installed by malware or trojan?
+Policy-enforced or admin-installed?
+Sideloaded extension or from official store?
+
+
+Analyze extension code:
+
+Obfuscated JavaScript or suspicious code patterns
+C2 infrastructure in extension code
+Known malicious extension signatures
+
+
+
+IMMEDIATE ACTIONS:
+
+Remove malicious extension from all browsers
+Block extension installation via browser policy
+Force logout and session invalidation if cookies stolen
+Block C2 domains used by extension
+
+CONTAINMENT:
+
+Audit all browser extensions organization-wide
+Implement browser extension allow-listing
+Check for credential or session theft
+Force password reset if credential harvesting detected
+Review web proxy logs for extension C2 communications
+Remove extension from all affected endpoints
+
+POST-INCIDENT:
+
+Document malicious extension details and IOCs
+Report extension to browser vendor (Chrome Web Store, Firefox Add-ons)
+Security awareness training on extension risks
+Monitor for extension reinstallation attempts
+Review browser security policies
+
+LESSONS LEARNED:
+
+Implement browser extension allow-listing
+Block user installation of unauthorized extensions
+Regular browser extension audits
+Monitor browser extension installations via EDR
+User training on extension permissions and risks
+Use browser management tools (Chrome Enterprise, Firefox ESR)
+Disable sideloading of extensions
+Review extension permissions before approval
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Phishing Runbook, Data Exfiltration Runbook",
+  "ioc": [
+    {
+      "Type": "browser_extension",
+      "Value": "malicious-extension-id",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "persistence"
+    },
+    {
+      "Type": "domain",
+      "Value": "extension-c2.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}

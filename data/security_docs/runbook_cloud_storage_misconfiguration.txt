@@ -1,0 +1,108 @@
+Title: Cloud Storage Misconfiguration and Data Exposure Response
+Severity: Critical
+MITRE ATT&CK: T1530
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: AWS S3, Azure Blob Storage, Google Cloud Storage
+Tools: Cloud Security Posture Management (CSPM), SIEM, Cloud Native Logs, DLP
+DETECTION:
+
+Publicly accessible cloud storage buckets discovered
+CSPM alerts for misconfigured storage permissions
+Anonymous access to storage containers
+Data leak notifications from security researchers
+Unexpected data download volumes from cloud storage
+Storage bucket discovered in public search engines
+DLP alerts for sensitive data in public storage
+
+INVESTIGATION:
+
+Identify misconfigured storage:
+
+Storage bucket/container name and location
+When was it created and by whom?
+What permissions are configured? (public read/write?)
+Who has accessed the storage recently?
+
+
+Review storage contents:
+
+What data is stored in the bucket?
+Is it sensitive data (PII, credentials, proprietary)?
+How many files and total data volume?
+Are credentials or API keys stored in files?
+
+
+Check access logs:
+
+Who accessed the public bucket?
+Source IPs and user agents
+What files were downloaded?
+When did public access begin?
+
+
+Determine impact:
+
+Was data indexed by search engines?
+Any reports of data misuse?
+Credentials exposed and compromised?
+
+
+
+IMMEDIATE ACTIONS:
+
+Remove public access permissions immediately
+Enable bucket/container access logging if not active
+Rotate any credentials or API keys exposed
+Request search engine removal (Google, Bing)
+
+CONTAINMENT:
+
+Review all cloud storage for similar misconfigurations
+Implement least privilege access policies
+Enable encryption at rest if not active
+Remove sensitive data from storage or move to secure location
+Audit all IAM policies for overly permissive access
+Enable versioning to track data access history
+
+POST-INCIDENT:
+
+Notify legal/compliance teams of potential data breach
+Document exposed data and access timeline
+Calculate scope of exposure (duration, data volume)
+Regulatory notification if required (GDPR, CCPA)
+Review cloud security policies and training
+Monitor for credential abuse if keys exposed
+
+LESSONS LEARNED:
+
+Implement Cloud Security Posture Management (CSPM)
+Block public access by default for all cloud storage
+Regular cloud storage permission audits
+Infrastructure as Code (IaC) with security scanning
+Automated detection of public storage buckets
+Data classification and DLP for cloud storage
+Security training on cloud storage configuration
+Principle of least privilege for cloud IAM
+
+METADATA:
+json{
+  "related_runbooks": "Data Exfiltration Runbook, Compromised Cloud Account Runbook, Insider Threat Runbook",
+  "ioc": [
+    {
+      "Type": "cloud_storage",
+      "Value": "exposed-bucket-name",
+      "Action": "secured",
+      "duration_in_days": 0,
+      "ckc_stage": "collection"
+    },
+    {
+      "Type": "api_key",
+      "Value": "exposed_credentials",
+      "Action": "revoked",
+      "duration_in_days": 0,
+      "ckc_stage": "credential_access"
+    }
+  ]
+}

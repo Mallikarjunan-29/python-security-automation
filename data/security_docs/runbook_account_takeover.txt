@@ -1,0 +1,111 @@
+Title: Account Takeover Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1078, T1110
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Web Applications, SaaS, Cloud Services
+Tools: SIEM, User Behavior Analytics (UBA), Authentication Logs, CASB
+DETECTION:
+
+Successful login after multiple failed attempts
+Login from new device or location immediately after credential stuffing
+Account activity patterns drastically different from baseline
+Password reset followed by immediate account changes
+Multiple account accesses from single IP address
+Email forwarding rules created after compromise
+Two-factor authentication disabled or modified
+Account information changes (email, phone, recovery options)
+
+INVESTIGATION:
+
+Check authentication logs:
+
+Timeline of login attempts (failed then successful)
+Source IP addresses and geolocation
+User agents and device fingerprints
+MFA bypass or social engineering of MFA?
+
+
+Review account activity post-compromise:
+
+Email forwarding rules or filters created
+Files accessed, downloaded, or shared
+Account settings modified (password, recovery email, MFA)
+Purchases or transactions made
+Messages sent from account
+
+
+Identify attack vector:
+
+Credential stuffing from breach database?
+Phishing for credentials?
+Session hijacking or cookie theft?
+MFA fatigue attack (push notification bombing)?
+
+
+Check for lateral account compromise:
+
+Same attacker IP accessing multiple accounts?
+Password reuse enabling additional compromises?
+
+
+
+IMMEDIATE ACTIONS:
+
+Suspend compromised account immediately
+Force logout all active sessions
+Reset account password
+Block attacker IP addresses
+Re-enable MFA if disabled
+
+CONTAINMENT:
+
+Remove malicious email forwarding rules
+Delete unauthorized filters and email rules
+Revoke OAuth tokens and application permissions
+Undo unauthorized account changes
+Review all account activity during compromise window
+Check linked accounts for compromise
+Verify no financial transactions or purchases
+
+POST-INCIDENT:
+
+Notify account owner of compromise
+Document account activities during takeover
+Review authentication policies and strengthen
+Monitor account for 30 days for suspicious activity
+Offer credit monitoring if financial data exposed
+Security awareness training for affected users
+
+LESSONS LEARNED:
+
+Enforce strong MFA for all accounts (FIDO2/hardware keys preferred)
+Implement impossible travel detection
+Device fingerprinting and trust scoring
+Rate limiting on authentication endpoints
+Monitor for credential stuffing attacks proactively
+CAPTCHA on login after failed attempts
+Passwordless authentication where possible
+User behavior analytics for anomaly detection
+
+METADATA:
+json{
+  "related_runbooks": "Brute Force Runbook, Password Spray Runbook, Business Email Compromise Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "ato_attacker_ip",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "account",
+      "Value": "compromised_user@company.com",
+      "Action": "password_reset",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

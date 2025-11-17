@@ -1,0 +1,108 @@
+Title: API Abuse and Credential Stuffing Response
+Severity: High
+MITRE ATT&CK: T1110.004, T1059
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: APIs, Web Applications, Cloud Services
+Tools: API Gateway, WAF, SIEM, Rate Limiting, API Management Platform
+DETECTION:
+
+Abnormally high API request volume from single IP/user
+Repeated failed authentication attempts via API
+API calls to sensitive endpoints from unusual sources
+Credential stuffing attempts (breached credential lists)
+API enumeration attempts (testing multiple endpoints)
+Unusual API usage patterns (data scraping, account takeover)
+API rate limit violations
+
+INVESTIGATION:
+
+Check API gateway logs:
+
+Source IP addresses and user agents
+API endpoints targeted
+Request frequency and patterns
+HTTP status codes (401 Unauthorized, 429 Rate Limited)
+Payload analysis (credential stuffing lists?)
+
+
+Identify attack type:
+
+Credential stuffing (using leaked passwords)
+Account enumeration (testing valid usernames)
+Data scraping (harvesting information)
+API key abuse (stolen/leaked keys)
+
+
+Review authentication patterns:
+
+Success rate of login attempts
+Geographic distribution of requests
+Timing and velocity of requests
+
+
+Check for compromised API keys:
+
+Keys exposed in public repositories (GitHub, GitLab)?
+Keys shared improperly or hard-coded in applications?
+
+
+
+IMMEDIATE ACTIONS:
+
+Enable aggressive rate limiting for affected endpoints
+Block attacking IP addresses or IP ranges
+Revoke compromised API keys immediately
+Enable CAPTCHA for high-risk authentication attempts
+Temporarily disable affected API endpoints if critical
+
+CONTAINMENT:
+
+Rotate all API keys and secrets
+Implement token-based authentication with short expiration
+Enable IP whitelisting for sensitive APIs where possible
+Review all accounts accessed via API for unauthorized activity
+Force password resets for successfully compromised accounts
+Implement bot detection and mitigation
+
+POST-INCIDENT:
+
+Document attack patterns and indicators
+Update API security policies
+Implement API threat detection rules in SIEM
+Review API documentation for sensitive data exposure
+Security testing of all public-facing APIs
+Notify affected users if accounts compromised
+
+LESSONS LEARNED:
+
+Implement OAuth 2.0 or similar modern authentication
+Strong rate limiting on all API endpoints
+API key rotation policies
+Monitor for API keys in public repositories (GitHub scanning)
+Web Application Firewall (WAF) with API protection
+Bot detection and CAPTCHA for sensitive operations
+Regular API security audits
+Principle of least privilege for API access
+
+METADATA:
+json{
+  "related_runbooks": "Brute Force Runbook, Password Spray Runbook, Web Application Attack Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "203.0.113.77",
+      "Action": "blocked",
+      "duration_in_days": 90,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "api_key",
+      "Value": "compromised_key_12345",
+      "Action": "revoked",
+      "duration_in_days": 0,
+      "ckc_stage": "initial_access"
+    }
+  ]
+}

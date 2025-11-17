@@ -1,0 +1,108 @@
+Title: SQL Injection Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1190
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Web Applications, Database Servers
+Tools: WAF, Database Activity Monitoring, Web Server Logs, SIEM, Application Logs
+DETECTION:
+
+WAF blocking SQL injection attempts
+Database error messages exposed in web application
+Suspicious SQL keywords in web requests (UNION, OR 1=1, DROP)
+Abnormal database query patterns
+Automated SQL injection tool signatures (SQLMap)
+Time-based blind SQL injection (delayed responses)
+Database query errors in application logs
+
+INVESTIGATION:
+
+Review WAF/IDS logs:
+
+Attack payloads and injection points
+Source IP addresses and user agents
+Targeted URLs and parameters
+Successful vs blocked attempts
+
+
+Check database logs:
+
+Unusual queries executed
+Data accessed or modified
+Administrative actions performed
+Error messages indicating injection success
+
+
+Analyze application logs:
+
+Which endpoints are vulnerable?
+Input validation failures
+Error handling exposing database structure
+
+
+Determine attack success:
+
+Was data exfiltrated?
+Were tables dropped or modified?
+Administrative access gained to database?
+OS command execution (xp_cmdshell in MSSQL)?
+
+
+
+IMMEDIATE ACTIONS:
+
+Block attacking IP addresses at WAF/firewall
+Take vulnerable endpoint offline if actively exploited
+Enable stricter WAF rules for SQL injection
+Change database credentials if compromise suspected
+
+CONTAINMENT:
+
+Patch SQL injection vulnerability in application code
+Review all database changes during attack window
+Restore database from backup if data integrity compromised
+Check for web shells or backdoors deployed via SQL injection
+Verify no administrative accounts created in database
+Review database permissions and restrict if excessive
+
+POST-INCIDENT:
+
+Conduct thorough code review for SQL injection vulnerabilities
+Implement parameterized queries/prepared statements
+Database integrity verification
+Notify legal/compliance if data breach occurred
+Document attack vectors and remediation
+Security awareness training for developers
+
+LESSONS LEARNED:
+
+Use parameterized queries and prepared statements exclusively
+Input validation and sanitization
+Least privilege for database accounts
+Web Application Firewall with SQL injection protection
+Regular SQL injection testing (SAST/DAST)
+Disable database error messages in production
+Database activity monitoring and alerting
+Secure coding training for development teams
+
+METADATA:
+json{
+  "related_runbooks": "Web Application Attack Runbook, Database Breach Runbook, Data Exfiltration Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "sqli_attacker_ip",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "payload",
+      "Value": "' OR '1'='1' --",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "exploitation"
+    }
+  ]
+}

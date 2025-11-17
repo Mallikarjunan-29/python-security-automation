@@ -1,0 +1,98 @@
+Title: Container/Kubernetes Security Incident Response
+Severity: High
+MITRE ATT&CK: T1610, T1611
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Kubernetes, Docker, Container Runtime
+Tools: Kubernetes Audit Logs, Container Security Platform (Aqua, Sysdig, Prisma Cloud), SIEM, EDR
+DETECTION:
+
+Privileged container creation
+Container escape attempts
+Unauthorized access to Kubernetes API server
+Suspicious container image pulls
+Containers running as root
+Host filesystem mounts in containers
+Cryptocurrency mining in containers
+Unusual outbound connections from containers
+
+INVESTIGATION:
+
+Check Kubernetes audit logs:
+
+Who created/modified suspicious containers?
+What RBAC permissions were used?
+API server authentication attempts
+ConfigMap/Secret access patterns
+
+
+Review container configurations:
+
+Image source and integrity
+Runtime privileges (privileged mode, capabilities)
+Volume mounts (especially host filesystem)
+Network policies and pod-to-pod communication
+
+
+Analyze container images:
+
+Scan for vulnerabilities and malware
+Check image provenance and signing
+Review Dockerfile for suspicious commands
+
+
+Check for:
+
+Lateral movement between pods
+Data exfiltration from containers
+Persistence mechanisms (DaemonSets, CronJobs)
+
+
+
+IMMEDIATE ACTIONS:
+
+Delete malicious pods/containers immediately
+Block malicious container image registries
+Rotate Kubernetes service account tokens
+Isolate affected nodes if container escaped
+
+CONTAINMENT:
+
+Implement pod security policies/standards
+Restrict container registry to approved images only
+Remove unnecessary RBAC permissions
+Patch vulnerable container images
+Update Kubernetes to latest secure version
+Enable network policies to restrict pod communication
+Scan all running containers for vulnerabilities
+
+POST-INCIDENT:
+
+Review all container deployments for security issues
+Implement image scanning in CI/CD pipeline
+Document attack timeline and container configurations
+Update container security baselines
+Monitor for persistence mechanisms (backdoor containers)
+
+LESSONS LEARNED:
+
+Enforce container image signing and verification
+Implement runtime security monitoring
+Principle of least privilege for RBAC
+Regular vulnerability scanning of container images
+Disable privileged containers unless absolutely necessary
+Network segmentation with network policies
+Enable Kubernetes audit logging
+Container security training for DevOps teams
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Privilege Escalation Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "container_image",
+      "Value": "malicious/cryptominer:latest",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "execution

@@ -1,45 +1,64 @@
-import sys
-import os
-import json
-sys.path.append(os.getcwd())
-from src.logger_config import get_logger
-from src.cache_handler import CacheHandler
-logger=get_logger(__name__)
+import logging
+import re
+
+logger = logging.getLogger(__name__)
+
+priority_map = {"Critical": 1, "High": 2, "Medium": 3, "Low": 4}
+
+def extract_severity(alert):
+    """
+    Extract severity from dict (nested or flat) or text alert.
+    Returns severity string or None if not found.
+    """
+    if isinstance(alert, dict):
+        # top-level severity
+        if "severity" in alert:
+            return alert["severity"]
+        # nested 'alert' dict
+        if "alert" in alert and isinstance(alert["alert"], dict):
+            return alert["alert"].get("severity", None)
+        # check any nested dict
+        for v in alert.values():
+            if isinstance(v, dict) and "severity" in v:
+                return v["severity"]
+        return None
+    elif isinstance(alert, str):
+        # match "severity=XXX" or "severity: XXX"
+        match = re.search(r"severity[:=]\s*(\w+)", alert, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    return None
+
 def queue_alert(alerts):
     try:
         logger.debug("Alert Queue sorting start")
-        if isinstance(alerts,dict):
-            alerts=[alerts]
-        priority_map={"Critical":1,"High":2,"Medium":3,"Low":4}
+
+        # normalize to list
+        if not isinstance(alerts, list):
+            alerts = [alerts]
+
+        normalized_alerts = []
+
         for alert in alerts:
-            alert['alert'].update({'prioritylevel':priority_map.get(alert.get("alert",10).get("severity",10),10)})
-        alerts.sort(key= lambda x: x['alert']['prioritylevel'])   
-        logger.debug("Alert Queue Sorting ended")
-        return alerts
-    except Exception as e:
-        logger.error(e)
-        return alerts
-    
-def get_topalerts(alerts,number=10):
-    try:
-        
-        alerts.sort(key=lambda x:x['PriorityLevel'])
-        number = number if len(alerts)>=number else len(alerts)
-        for count in range(number):
-            print(f"Alert Number {count+1}")
-            print("="*50)
-            print(f"Alert Name: {alerts[count]['alert']['name']}")
-            print(f"AISeverity:{alerts[count]['AISeverity']}")
-            print(f"AlertSeverity:{alerts[count]['AlertSeverity']}")
-            print(f"AI Classification:{alerts[count]['Classification']}")
-            print(f"AI Confidence Score:{alerts[count]['Confidence']}")
-            print(f"AI Reasoning:{alerts[count]['Reasoning']}")
-            print(f"AI Priority:{alerts[count]['PriorityLevel']}")            
-            print("="*50)
-    except IndexError as e:
-        logger.error(e)
-    except Exception as e:
-        logger.error(e)
+            # if plain text, wrap it
+            if not isinstance(alert, dict):
+                alert = {"raw": str(alert)}
 
+            # extract severity
+            severity = extract_severity(alert) or "Low"  # default if missing
+            priority = priority_map.get(severity.capitalize(), 10)  # unknown = 10
 
-    
+            # attach prioritylevel safely
+            alert["prioritylevel"] = priority
+
+            normalized_alerts.append(alert)
+
+        # sort by prioritylevel ascending
+        normalized_alerts.sort(key=lambda x: x["prioritylevel"])
+
+        logger.debug("Alert Queue sorting ended")
+        return normalized_alerts
+
+    except Exception as e:
+        logger.error(f"Error in queue_alert: {e}")
+        return alerts

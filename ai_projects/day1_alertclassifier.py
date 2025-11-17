@@ -1,6 +1,7 @@
 from google import genai
 import os
 from dotenv import load_dotenv
+from threading import Lock
 load_dotenv()
 import re
 from datetime import datetime,timedelta
@@ -9,29 +10,50 @@ import time
 import sys
 import json
 import time
-from ai_projects import day2_threatintel
+from threading import Lock
 sys.path.append(os.getcwd())
+from ai_projects import day2_threatintel
 from src.rate_limiter import GeminiRateLimiter
 from src import logger_config
 from src.logger_config import get_logger
 logger=get_logger(__name__)
 import hashlib
+from src.ioc_extractor import extract_ioc,extract_behavior
+from concurrent.futures import ThreadPoolExecutor,as_completed
+import chromadb
+from src import ai_response_handler
+from src.ai_response_handler import AI_response_handler
+cache_lock=Lock()
 
-def build_prompt(alert,abuse_response,vt_response,human_override):
+def build_prompt(alert,ip_response,url_response,domain_response,human_override,behaviour):
     logger.debug("Prompt Building Started")
     """
     Takes Alert dictionary and builds a prompt
     """
     prompt_human_override=f"- Analyst Override:{human_override}" if human_override!="" else ""
+    if ip_response:
+        ip_intel=f"Threat Intel responses for the ip: {ip_response}"
+    else:
+        ip_intel=""
+    if url_response:
+        url_intel=f"Threat Intel responses for the url: {url_response}"
+    else:
+        url_intel=""
+    if domain_response:
+        domain_intel=f"Threat Intel responses for the domain: {domain_response}"
+    else:
+        domain_intel=""
     prompt = f"""
 You are a SOC analyst
-Analyze this login alert
+Analyze this alert
 - alert:{json.dumps(alert,indent=4)}
+- signature:{behaviour if behaviour!='' else 'none'} 
 {prompt_human_override}
 
 This is what the threat intel feeds say about the IP
-AbuseIPDB:{abuse_response}
-VirusTotal:{vt_response}
+{ip_intel}
+{url_intel}
+{domain_intel}
 
 Is this suspicious?
 Classify as :
@@ -44,9 +66,20 @@ Classify as :
 - classification: one of "TRUE_POSITIVE", "FALSE_POSITIVE", "NEEDS_REVIEW" (string).
 - confidence: integer 0-100 (no % sign).
 - severity: one of "Critical","High","Medium","Low"
-- reasoning: array of exactly 3 strings. Each string max 50 words. No bullet characters, no newlines inside items.
+- reasoning: array of exactly 4 strings. Each string max 50 words. No bullet characters, no newlines inside items.
 - Do NOT output any extra text, commentary, or code fences. Output must be parseable by json.loads().
 - Include Analyst override if available
+- Include IPs or Urls or domains given when you reason as the data will be fed to chromadb for future searches for the same alert
+- First Sentence must always state the alert behaviour.
+  1. The alert indicates multiple RDP login attemps from <source ip> to <destination ip> which is a sign of lateral movement
+- semantic: Generate a runbook search query combining:
+  1. Attack type (e.g., "Brute Force", "Lateral Movement")
+  2. Key indicators (e.g., "RDP", "PowerShell", "DNS tunneling")
+  3. MITRE technique ID if identifiable (e.g., T1110, T1021)
+  
+  Format: "Attack_Type Key_Indicator MITRE_ID"
+  Example: "Brute Force Authentication T1110"
+  Example: "Lateral Movement RDP T1021"
 
 OUTPUT_SCHEMA:
 {{
@@ -56,8 +89,10 @@ OUTPUT_SCHEMA:
   "reasoning": [
     "One-sentence reason 1 (<=50 words).",
     "One-sentence reason 2 (<=50 words).",
-    "One-sentence reason 3 (<=50 words)."
-  ]
+    "One-sentence reason 3 (<=50 words).",
+    "One-sentence reason 4 (<=50 words).",
+  ],
+  "semantic": "search query for runbook matching"
 }}
 """
     logger.debug("Prompt Building ended")
@@ -68,47 +103,78 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
     Alert -> Threat Intel -> Cache -> AI -> classification
     """
     try:
-        ip_to_check=alert['source_ip']
-        itemtocheck=ti_cache_data.get(ip_to_check,0)
-        alert_ti_cache={}
-        alert_ai_cache={}
-        # Loading TI cache data based on conditions
-        if not ti_cache_data:
-            abuse_response,vt_response=update_ti_cache(alert_ti_cache,timing,ip_to_check)
-            timing.update({"TI_FromCache":0})
-        elif itemtocheck==0:
-            abuse_response,vt_response=update_ti_cache(alert_ti_cache,timing,ip_to_check)
-            timing.update({"TI_FromCache":0})
+        """Including a porttion to extract IOCs"""
+        logger.debug("calling IOC extractor")
+        if isinstance(alert, dict):
+            alert_text=json.dumps(alert)
         else:
-            logger.debug("Loading TI Response from cache started")
-            start_time=time.time()
-            alert_ti_cache={ip_to_check:ti_cache_data.get(ip_to_check,0)}
-            abuse_response=alert_ti_cache[ip_to_check]['AbuseIntel']
-            vt_response=alert_ti_cache[ip_to_check]['VTIntel'] 
-            end_time=time.time()-start_time
-            timing.update({"TI_FromCache":end_time})
-            alert_ti_cache[ip_to_check]['CacheHit']+=1        
-            logger.debug("Loading TI Response from cache ended")
+            alert_text=alert
+            
+        ioc=extract_ioc(str(alert_text))
+        logger.debug("Extracting IOCs finished")
+        
+        ip_response={}
+        url_response={}
+        domain_response={}
+        handlers={
+            "ips":process_ip,
+            "urls":process_url,
+            "domains":process_domain
+        }
+        logger.debug("Calling thread pool")
+        with ThreadPoolExecutor(max_workers=6) as exe:
+            futures=[]
+            for categories,values in ioc.items():
+                func=handlers[categories]
+                for value in values:
+                   futures.append( exe.submit(func,value,ti_cache_data,timing))
+            logger.debug("Calling completed futures")
+            for future in as_completed(futures):
+                out=future.result()
+                if out['category']=='ips':
+                    ip_response.update({out['value']:out['result']})
+                elif  out['category']=='urls':
+                    url_response.update({out['value']:out['result']})
+                elif  out['category']=='domains':
+                    domain_response.update({out['value']:out['result']})
+            logger.debug("Completed futures processed")
+        logger.debug("Thread pool ended")
+                
+                
+        #Query Text and Caching logic
+        
+        """        # Implementing Vector DB for AI response
+        ai_resp_handler=AI_response_handler("ai_response")
+        ai_response,token_data=ai_resp_handler.search(ioc,ip_response,url_response,domain_response,alert)
+        if not ai_response:
+            ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing)
+            ai_resp_handler.store_cache(ioc,ip_response,url_response,domain_response,ai_response,token_data,alert)
+        
+        return ai_response,token_data
+                
 
-        #Loading AI response checker
-        response_data= json.dumps({"alert":alert,"AbuseTI":alert_ti_cache[ip_to_check]['AbuseIntel'],"VTTI":alert_ti_cache[ip_to_check]['VTIntel']},sort_keys=True)
-        response_key=hashlib.md5(response_data.encode()).hexdigest()
+
+        """
+        #Loading AI response checker - Needs change. It will be IOC instead of alert
+        
+        response_key=generate_cache_key(ip_response,url_response,domain_response,ioc,alert)
         response_to_check=ai_cache_data.get(response_key,"") if ai_cache_data else ""
         if response_to_check != "":
-            alert_ai_cache={response_key:ai_cache_data.get(response_key,"")}
-            if alert_ai_cache[response_key]['AI_Response']['classification']!=alert_ai_cache[response_key]['Humanoverride']:
+            ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
+            if ai_cache_data[response_key]['AI_Response']['classification']!=ai_cache_data[response_key]['Humanoverride']:
                 start_time=time.time()
-                human_override=alert_ai_cache[response_key]['Humanoverride']
-                ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache,human_override)
+                human_override=ai_cache_data[response_key]['Humanoverride']
+                ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override)
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
             else:
                 logger.debug("Loading AI Response from cache started")
                 start_time=time.time()
-                alert_ai_cache={response_key:ai_cache_data.get(response_key,"")}
-                ai_response=alert_ai_cache[response_key]['AI_Response']
-                human_override=alert_ai_cache[response_key]['Humanoverride']
-                alert_ai_cache[response_key]['AI_CacheHit']+=1
+                ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
+                ai_response=ai_cache_data[response_key]['AI_Response']
+                human_override=ai_cache_data[response_key]['Humanoverride']
+                with cache_lock:
+                    ai_cache_data[response_key]['AI_CacheHit']+=1
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
                 token_data={
@@ -123,9 +189,9 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
                 logger.debug("Loading AI Response from cache ended")
         else:
             human_override=""
-            ai_response,token_data=  update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,alert_ai_cache,human_override)
+            ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override)
             timing.update({"AI_FromCache":0})   
-        return ai_response,token_data,alert_ti_cache,alert_ai_cache,response_key
+        return ai_response,token_data,response_key 
     except Exception as e:
         logger.error(e)
 
@@ -227,28 +293,60 @@ def prune_old_cache(cache_dump):
     except Exception as e:
         logger.error(e)
         return None
-    
+# Ip Caching
 def update_ti_cache(ti_cache_data,timing,ip_to_check):
     start_time=time.time()
     abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
     end_time=time.time()-start_time
-    timing.update({"TILookup":end_time})
+    timing.update({"IPTILookup":end_time})
     data_to_cache={
         "IP":ip_to_check,
         "AbuseIntel":abuse_response,
         "VTIntel":vt_response,
         "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "CacheHit":0
+        "IPCacheHit":0
         }
     ti_cache_data.update({ip_to_check:data_to_cache})
     return abuse_response,vt_response
 
-def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response_key,ai_cache_data,human_override):
+#URL Caching
+def update_url_cache(ti_cache_data,timing,url):
+    logger.debug("Updating url cache")
+    start_time=time.time()
+    vt_response,url_haus_response=day2_threatintel.url_lookup(url)
+    end_time=time.time()-start_time
+    timing.update({"URLTILookup":end_time})
+    data_to_cache={
+        "url":url,
+        "URLHauseIntel":url_haus_response,
+        "VTURLIntel":vt_response,
+        "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "URLCacheHit":0
+        }
+    ti_cache_data.update({url:data_to_cache})
+    return url_haus_response,vt_response
+
+#Domain Caching
+def update_domain_cache(ti_cache_data,timing,domain):
+    start_time=time.time()
+    vt_response=day2_threatintel.vt_domain_response(domain)
+    end_time=time.time()-start_time
+    timing.update({"DomainTILookup":end_time})
+    data_to_cache={
+        "domain":domain,
+        "VTDomainIntel":vt_response,
+        "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "DomainCacheHit":0
+        }
+    ti_cache_data.update({domain:data_to_cache})
+    return vt_response
+
+def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override=""):
     for attempts in range(max_retries):
         try:
             logger.debug("Building Prompt for the alert")
             start_time=time.time()
-            ai_prompt=build_prompt(alert,abuse_response,vt_response,human_override)
+            ai_prompt=build_prompt(alert,ip_response,url_response,domain_response,human_override,extract_behavior(alert))
             logger.debug("Generating AI response")                
             ai_response,token_data=    ai_content_generate(ai_prompt)
             end_time=time.time()-start_time
@@ -278,4 +376,159 @@ def update_ai_cache(alert,abuse_response,vt_response,max_retries,timing,response
                 continue
             logger.error(e)
             return None
+
+
+def process_ip(ip,ti_cache_data,timing):
+    logger.debug("Calling Process IPs")
+    ip_to_check=ip
+    itemtocheck=ti_cache_data.get(ip_to_check,0)
+    
+    # Loading TI cache data based on conditions
+    if not ti_cache_data:
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        timing.update({"TI_FromCache":0})
+    elif itemtocheck==0:
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        timing.update({"TI_FromCache":0})
+    else:
+        logger.debug("Loading TI Response from cache started")
+        start_time=time.time()
+        abuse_response=ti_cache_data[ip_to_check]['AbuseIntel']
+        vt_response=ti_cache_data[ip_to_check]['VTIntel'] 
+        end_time=time.time()-start_time
+        timing.update({"TI_FromCache":end_time})
+        with cache_lock:
+            ti_cache_data[ip_to_check]['IPCacheHit']+=1        
+        logger.debug("Loading TI Response from cache ended")
+    process_ip_response={
+        "category":"ips",
+        "value":ip,
+        "result":{
+                "IP_Abuse_intel":abuse_response,
+                "IP_VT_Intel":vt_response
+        }
+    }
+    logger.debug("returning Process IPs")
+    return process_ip_response
+
+
+
+
+
+# Process URLs from/to cache
+def process_url(url,ti_cache_data,timing):
+    logger.debug("Calling Process urls")
+    url_to_check=url
+    itemtocheck=ti_cache_data.get(url_to_check,0)
+    # Loading TI cache data based on conditions
+    if not ti_cache_data:
+        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check)
+        timing.update({"TI_FromCache":0})
+    elif itemtocheck==0:
+        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check)
+        timing.update({"TI_FromCache":0})
+    else:
+        logger.debug("Loading TI Response from cache started")
+        start_time=time.time()
+        url_hause_response=ti_cache_data[url_to_check]['URLHauseIntel']
+        vt_url_response=ti_cache_data[url_to_check]['VTURLIntel'] 
+        end_time=time.time()-start_time
+        timing.update({"TI_FromCache":end_time})
+        with cache_lock:
+            ti_cache_data[url_to_check]['URLCacheHit']+=1        
+        logger.debug("Loading TI Response from cache ended")  
+    process_url_response={
+        "category":"urls",
+        "value":url,
+        "result":{
+                "URL_haus_response":url_hause_response,
+                "vt_URL_response":vt_url_response
+        }
+    }
+    logger.debug("returning Process urls")
+    return process_url_response
+    
+
+# Process domains from/to cache
+def process_domain(domain,ti_cache_data,timing):
+    logger.debug("Calling Process domains")
+    url_to_check=domain
+    itemtocheck=ti_cache_data.get(url_to_check,0)   
+
+    # Loading TI cache data based on conditions
+    if not ti_cache_data:
+        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check)
+        timing.update({"TI_FromCache":0})
+    elif itemtocheck==0:
+        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check)
+        timing.update({"TI_FromCache":0})
+    else:
+        logger.debug("Loading TI Response from cache started")
+        start_time=time.time()
+        vt_domain_response=ti_cache_data[url_to_check]['VTDomainIntel'] 
+        end_time=time.time()-start_time
+        timing.update({"TI_FromCache":end_time})
+        with cache_lock:
+            ti_cache_data[url_to_check]['DomainCacheHit']+=1        
+        logger.debug("Loading TI Response from cache ended")
+    process_domain_response={
+        "category":"domains",
+        "value":domain,
+        "result":{
+            "VT_domain_response":vt_domain_response
+        }
+    }   
+    logger.debug("returning Process domains")
+    return process_domain_response
+
+
+def generate_cache_key(ip_response,url_response,domain_response,ioc,alert):
+    try:
+        logger.debug("Cache Key generated started")
+        malicious_ip=[
+                        data.get('IP_Abuse_intel',0).get('IP',0) for data in ip_response.values()
+                        if data.get('IP_Abuse_intel') and data.get('IP_Abuse_intel',0).get('AbuseConfidenceScore',0) > 50
+            ]
+        
+        malicious_url=[
+                    data.get('vt_URL_response',0).get('url',0) for data in url_response.values()
+                    if data.get('vt_URL_response') and data.get('vt_URL_response',0).get('stats',0).get('malicious',0)>0
+        ]
+        malicious_domain=[
+                    data.get('VT_domain_response',0).get('Domain',0) for data in domain_response.values()
+                    if data.get('VT_domain_response') and data.get('VT_domain_response',0).get('Stats',0).get('malicious',0)>0
+        ]
+        
+        malicious_ioc={
+        "ips":malicious_ip,
+        "urls":malicious_url,
+        "domain":malicious_domain
+        }
+        if len(malicious_ip)==0 and len(malicious_url)==0 and len(malicious_domain)==0:
+            all_iocs=ioc.get("ips",[])+ioc.get('urls',[])+ioc.get('domains',[])
+            all_iocs=sorted(set(all_iocs))
+            ioc_fp=hashlib.sha256(",".join(all_iocs).encode()).hexdigest()[:12]
+            normalized_alert={
+                "ioc":ioc_fp,
+                "behaviour":extract_behavior(alert)
+            }
+        else:
+            normalized_alert={
+                "ioc":malicious_ioc,
+                "behaviour":extract_behavior(alert)
+            }
+        cache_key=hashlib.md5(json.dumps(normalized_alert,sort_keys=True).encode()).hexdigest()
+        logger.debug("Cache Key generated ended")
+        return cache_key
+    except Exception as e:
+        logger.error(str(e))
+        logger.debug("Error in cache key generation")
+        return None
+
+if __name__=="__main__":
+    alert="HIGH: Possible C2 traffic — src=192.168.50.13 dst=80.94.93.119:5000; suspicious-uri=/api/collect; method=POST; transfer=1.2MB; user-agent=Mozilla/5.0(Windows)"
+    classify_alert(alert,{},{},{})
+    
+
+    
     

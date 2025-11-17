@@ -1,0 +1,83 @@
+Title: Abnormal Lateral Movement
+Severity: High
+MITRE ATT&CK: T1078, T1021
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Enterprise network, Directory Services
+Tools: EDR platforms, SIEM, Threat intelligence, Network monitoring
+
+DETECTION THRESHOLDS:
+- Host access count exceeding 3x baseline over 30-day period
+- Access to previously unvisited systems
+- Rapid sequential access within 10-minute windows
+- Mix of successful and failed authentication attempts
+
+DETECTION:
+- SIEM correlation alert for unusual multi-host access patterns
+- Validate criticality of accessed infrastructure
+- Establish user's normal access baseline over 90-day window
+
+INVESTIGATION:
+- Authentication log analysis: Timestamps, identity, destination systems
+- Historical baseline establishment:
+  - Typical access volume over previous 30 days
+  - Regularly accessed system inventory
+  - Historical alert generation for this identity
+  - Normal authentication patterns
+- Current activity comparison against established baseline
+- Build comprehensive user timeline:
+  - Access frequency and volume trends
+  - Target system enumeration
+  - Alert history
+  - Authentication pattern analysis
+- Significance threshold: Current activity substantially exceeding baseline with unprecedented targets
+
+IMMEDIATE ACTIONS:
+- Suspend account immediately in directory services
+- Investigate accessed systems for compromise indicators:
+  - Novel process creation
+  - External network communications
+  - Office applications spawning unusual child processes
+  - Execution from suspicious paths
+
+CONTAINMENT:
+- Isolate systems exhibiting post-compromise indicators
+- Execute malware investigation for suspicious artifacts
+- Mandate multi-factor authentication
+- Rotate credentials for affected account
+- Hunt across accessed systems for:
+  - Credential dumping tools
+  - Persistence mechanisms
+  - Data staging activities
+  - Additional compromised accounts
+
+CONTAINMENT VERIFICATION:
+- Confirm account suspension across all systems
+- Validate no alternative credentials exist
+- Verify isolation effectiveness
+
+POST-INCIDENT:
+- Extended 20-day monitoring for affected infrastructure
+- Comprehensive incident documentation
+- Baseline refinement based on attack characteristics
+
+LESSONS LEARNED:
+- Detection threshold optimization
+- Comprehensive firewall rule audit
+- Organization-wide MFA deployment initiative
+- Access control principle review
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Credential Theft", "Privilege Escalation"],
+  "ioc": [
+    {
+      "Type": "behavior",
+      "Value": "abnormal_lateral_movement",
+      "Action": "monitored",
+      "duration_in_days": 0,
+      "ckc_stage": "Lateral Movement"
+    }
+  ]
+}

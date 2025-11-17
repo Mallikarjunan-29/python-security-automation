@@ -1,0 +1,109 @@
+Runbook 15: Compromised Cloud Account
+Title: Cloud Account Compromise Response
+Severity: Critical
+MITRE ATT&CK: T1078.004, T1550
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: AWS, Azure, GCP, Office 365
+Tools: Cloud Security Posture Management (CSPM), SIEM, Cloud Native Logs, CASB
+DETECTION:
+
+Login from unusual geographic location
+Impossible travel (logins from distant locations in short time)
+API calls from unknown IP addresses
+Resource creation/deletion (EC2 instances, VMs, storage)
+Privilege escalation in cloud IAM
+Large data downloads from cloud storage
+Cloud service configuration changes
+MFA disabled or authentication policy changes
+
+INVESTIGATION:
+
+Check cloud audit logs (CloudTrail, Azure Activity Log, GCP Audit):
+
+Source IP addresses and geolocation
+API calls made (what actions taken?)
+Resources created/modified/deleted
+IAM/permission changes
+Data access patterns
+
+
+Verify account legitimacy:
+
+Contact account owner to confirm activity
+Check if credentials leaked (HaveIBeenPwned, leaked credential feeds)
+Recent password changes or MFA modifications?
+
+
+Review authentication logs:
+
+Successful logins from suspicious IPs
+Failed login attempts before success
+MFA bypass or authentication anomalies
+
+
+Check for cryptocurrency mining:
+
+Unusual compute resource creation (large instances)
+High cloud bills or resource usage spikes
+
+
+
+IMMEDIATE ACTIONS:
+
+Rotate compromised credentials immediately
+Revoke active sessions and access tokens
+Enable MFA if not already active
+Block suspicious IP addresses in cloud firewall/security groups
+Suspend compromised account temporarily
+
+CONTAINMENT:
+
+Delete unauthorized resources (EC2 instances, VMs, storage buckets)
+Revert unauthorized IAM/permission changes
+Review all API keys and rotate if compromised
+Check for backdoor accounts or service principals created
+Verify no data exfiltration from cloud storage
+Review billing for fraudulent resource usage
+Enable cloud security monitoring if not active
+
+POST-INCIDENT:
+
+Force password reset for affected account
+Enforce conditional access policies (IP restrictions, device compliance)
+Enable cloud logging and alerting
+Document unauthorized actions taken
+Review cloud security posture
+Conduct security awareness training
+
+LESSONS LEARNED:
+
+Enforce MFA for all cloud accounts
+Implement conditional access policies
+Monitor for impossible travel and anomalous access
+Regular cloud security audits
+Principle of least privilege for IAM roles
+Enable cloud security services (GuardDuty, Security Center, Security Command Center)
+API key rotation policies
+
+METADATA:
+json{
+  "related_runbooks": "Brute Force Runbook, Password Spray Runbook",
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "198.51.100.42",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "cloud_resource",
+      "Value": "i-malicious123456",
+      "Action": "terminated",
+      "duration_in_days": 0,
+      "ckc_stage": "impact"
+    }
+  ]
+}

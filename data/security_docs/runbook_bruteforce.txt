@@ -1,0 +1,75 @@
+Title: Brute Force Credential Attack
+Severity: High
+MITRE ATT&CK: T1110
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Enterprise endpoints, Directory Services
+Tools: EDR platforms, Authentication logs, SIEM solutions, Threat intelligence feeds
+
+DETECTION THRESHOLDS:
+- Minimum 10 authentication failures
+- Concentrated on single identity
+- Origin from singular network address
+- Temporal window of 10 minutes or less
+- Windows Event IDs: 4625 (failed auth), 4771 (Kerberos failure)
+
+DETECTION:
+- SIEM alert activates on concentrated authentication failure sequence
+- Attack pattern: High-volume attempts against single credential
+- Query correlation engines to distinguish from password spray
+- External attack sources warrant elevated concern
+- Rapid succession indicates automated tooling
+
+INVESTIGATION:
+- Collect authentication telemetry: Timestamps, source networks, targeted identity, affected infrastructure
+- Conduct contextual analysis:
+  - Survey additional targets from attacking address
+  - Determine privilege level of targeted account
+  - Search for successful authentication following failure sequence
+  - Enumerate concurrent sessions for targeted identity
+  - Query endpoint detection platforms for process anomalies
+  - Examine system behavior:
+    - Credential harvesting tool execution
+    - Scripting language abuse from unexpected contexts
+    - Persistence mechanism establishment
+- Validate attacking address against threat intelligence sources
+- Analyze authentication cadence: Inter-attempt intervals, credential variations
+
+IMMEDIATE ACTIONS:
+- Enforce network perimeter blocking for attacking sources (90-day duration)
+- Enable mandatory second-factor authentication for compromised identity
+- Execute credential rotation for targeted account
+- Revoke all active sessions if breach confirmed
+
+CONTAINMENT:
+- Isolate endpoint via EDR if system compromise detected
+- Execute malware investigation procedures for suspicious artifacts
+- Reassess and constrain account privileges appropriately
+- Search for credential theft indicators in process memory
+- Maintain heightened monitoring for 48-hour period
+
+POST-INCIDENT:
+- Document attack indicators in centralized threat database
+- Author detailed incident narrative covering timeline and remediation
+- Deploy account lockout policies if not currently implemented
+
+LESSONS LEARNED:
+- Enhance detection thresholds based on attack profile
+- Review authentication security posture organization-wide
+- Distribute indicators to threat intelligence community
+- Evaluate login endpoint protection mechanisms
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Password Spray Attack", "Lateral Movement Detection"],
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "185.25.24.23",
+      "Action": "blocked",
+      "duration_in_days": 90,
+      "ckc_stage": "Initial Access"
+    }
+  ]
+}

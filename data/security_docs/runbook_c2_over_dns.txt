@@ -1,0 +1,91 @@
+Title: DNS Command and Control Channel
+Severity: Critical
+MITRE ATT&CK: T1071.004
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network infrastructure, DNS resolvers
+Tools: DNS logging platforms, Network security monitoring, SIEM, Threat intelligence
+
+DETECTION THRESHOLDS:
+- Query volume exceeding 100 requests per minute from single host (baseline: under 10)
+- Subdomain length surpassing 50 characters
+- TXT record queries exceeding 5 within 60-second window
+- NXDOMAIN response rate above 20 percent
+- Regular interval beaconing behavior
+
+DETECTION:
+- Abnormal DNS query volume from individual endpoints
+- Queries targeting recently registered or suspicious domains
+- TXT record requests uncommon in standard enterprise traffic
+- Extended subdomain strings suggesting data encoding
+- Rhythmic query patterns indicating automated beaconing
+
+INVESTIGATION:
+- Analyze DNS telemetry for volumetric and pattern anomalies
+- Domain intelligence gathering:
+  - Registration date verification via WHOIS services
+  - Reputation assessment through threat intelligence platforms
+  - Query behavior analysis: Frequency, timing, record types
+- Endpoint correlation via EDR:
+  - Process identification for DNS activity
+  - Binary reputation verification
+  - Parent process relationship analysis
+  - Execution path validation
+- Resolve destination infrastructure against malicious IP databases
+- Examine DNS payload characteristics for exfiltration indicators
+- Review network connections for C2 communication patterns
+
+IMMEDIATE ACTIONS:
+- Configure DNS sinkholing for malicious domains
+- Integrate domains into threat intelligence blocklists
+- Execute network isolation for compromised endpoints
+- Optionally capture volatile memory for forensic analysis
+
+CONTAINMENT:
+- Terminate processes generating malicious DNS traffic via EDR
+- Conduct malware investigation for identified threats
+- Validate absence of data exfiltration through payload analysis
+- Block command infrastructure at network perimeter
+- Eliminate persistence mechanisms: Scheduled tasks, registry modifications
+- Rotate credentials accessed by compromised systems
+
+CONTAINMENT VERIFICATION:
+- Validate cessation of malicious DNS queries
+- Confirm no new connections to threat infrastructure
+- Survey additional endpoints for identical domain queries
+
+POST-INCIDENT:
+- Catalog all threat indicators: Domains, addresses, process signatures
+- Hunt across enterprise for similar behavioral patterns
+- Analyze DNS traffic organization-wide for comparable threats
+- Quantify exfiltrated data if applicable
+- Execute breach notification procedures if sensitive data compromised
+
+LESSONS LEARNED:
+- Activate comprehensive DNS query logging if absent
+- Deploy DNS tunneling detection capabilities
+- Establish baseline DNS patterns per host and department
+- Implement DNS filtering solutions at network edge
+- Consider DNS sinkholing for known malicious infrastructure
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Data Exfiltration Response", "Network Beaconing"],
+  "ioc": [
+    {
+      "Type": "domain",
+      "Value": "c2-server-xyz.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Command and Control"
+    },
+    {
+      "Type": "IP",
+      "Value": "203.0.113.50",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Command and Control"
+    }
+  ]
+}

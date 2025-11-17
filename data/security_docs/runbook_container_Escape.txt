@@ -1,0 +1,113 @@
+Title: Container Escape Detection and Response
+Severity: Critical
+MITRE ATT&CK: T1611
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Kubernetes, Docker, Container Runtime
+Tools: Container Security Platform, Kubernetes Audit Logs, Runtime Monitoring, EDR on Nodes
+DETECTION:
+
+Privileged container accessing host filesystem
+Container mounting sensitive host paths (/var/run/docker.sock, /proc, /sys)
+Container process escaping to host namespace
+Kernel exploit attempts from containers
+CAP_SYS_ADMIN capability abuse in containers
+Container runtime vulnerability exploitation
+Host processes spawned from container context
+Unusual syscalls from containers (mount, unshare, chroot)
+
+INVESTIGATION:
+
+Check container configuration:
+
+Is container running in privileged mode?
+What host paths are mounted in container?
+Capabilities granted to container (especially CAP_SYS_ADMIN)
+Security context and pod security policy
+Container image source and integrity
+
+
+Review Kubernetes audit logs:
+
+Who created the vulnerable container?
+When was privileged access granted?
+What commands executed in container?
+API calls made from container service account
+
+
+Analyze host system:
+
+Were host processes spawned by container?
+Files modified on host filesystem
+Network connections from escaped process
+Privilege escalation on host after escape
+
+
+Identify exploitation method:
+
+Known container runtime CVE exploited?
+Misconfiguration (privileged mode, host mounts)?
+Kernel vulnerability leveraged?
+
+
+
+IMMEDIATE ACTIONS:
+
+Delete malicious container/pod immediately
+Isolate affected Kubernetes node from cluster
+Block container image registry if compromised
+Revoke service account tokens used
+
+CONTAINMENT:
+
+Check all nodes for container escape indicators
+Audit all privileged containers in cluster
+Remove unnecessary host volume mounts
+Implement Pod Security Standards/Policies
+Patch container runtime and kernel vulnerabilities
+Verify no persistence on host filesystem
+Check for lateral movement to other nodes
+
+POST-INCIDENT:
+
+Rebuild affected Kubernetes nodes from clean images
+Document container escape technique and indicators
+Review all container security policies
+Implement runtime security monitoring
+Monitor cluster for 30 days for suspicious activity
+Update container security baselines
+
+LESSONS LEARNED:
+
+Enforce Pod Security Standards (restricted by default)
+Disable privileged containers unless absolutely necessary
+Minimize host path mounts in containers
+Drop unnecessary Linux capabilities from containers
+Use read-only root filesystems in containers
+Implement runtime security monitoring (Falco, Aqua, Sysdig)
+Regular container image scanning for vulnerabilities
+Network policies to isolate container workloads
+AppArmor or SELinux profiles for containers
+Keep container runtime and kernel patched
+
+METADATA:
+json{
+  "related_runbooks": "Container Security Incident Runbook, Privilege Escalation Runbook, Kubernetes Compromise Runbook",
+  "ioc": [
+    {
+      "Type": "container_image",
+      "Value": "malicious/escape-tool:latest",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "privilege_escalation"
+    },
+    {
+      "Type": "vulnerability",
+      "Value": "CVE-202X-XXXXX",
+      "Action": "patched",
+      "duration_in_days": 0,
+      "ckc_stage": "exploitation"
+    }
+  ]
+}

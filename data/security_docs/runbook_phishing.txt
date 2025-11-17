@@ -1,0 +1,96 @@
+Title: Phishing Campaign Response
+Severity: High
+MITRE ATT&CK: T1566
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Email infrastructure, Messaging platforms
+Tools: Email security gateway, SIEM, Threat intelligence, Sandbox analysis platforms
+
+EMAIL AUTHENTICATION INDICATORS:
+- SPF validation failure or soft-fail status
+- DKIM signature absence or validation failure
+- DMARC policy failure
+- Sender domain mismatch with reply-to address
+- Domain registration under 30 days
+- Generic salutations lacking personalization
+- Urgency-inducing language patterns
+
+DETECTION:
+- End-user reports suspicious correspondence to security team
+- Email gateway automatic blocking based on reputation or content
+- SIEM pattern matching for known phishing characteristics
+- Anti-phishing platform alerts
+
+INVESTIGATION:
+- Acquire original message in native format for analysis
+- Email header examination:
+  - Validate SPF, DKIM, DMARC authentication results
+  - Assess sender domain reputation via threat intelligence
+  - Extract and analyze embedded URLs against multiple databases
+  - Hash attachments and cross-reference with malware repositories
+  - Detonate suspicious files in isolated sandbox environment
+- Email distribution analysis via gateway logs
+- Web proxy correlation for URL access post-delivery
+- Authentication log analysis for credential submission indicators
+- EDR query for attachment execution events
+
+USER INTERACTION ASSESSMENT:
+- No interaction: Direct user to delete and report
+- Link accessed without credential entry: 24-hour user activity monitoring
+- Credentials submitted: Immediate containment procedures
+
+IMMEDIATE ACTIONS:
+- Instruct non-interacting users to avoid engagement with message
+- Enforce permanent sender domain blocking at email gateway
+- Add malicious URLs to web proxy deny lists
+- Quarantine all message instances organization-wide
+- Issue enterprise-wide alert for widespread campaigns
+
+CONTAINMENT:
+- Credential compromise scenario:
+  - Force immediate credential reset
+  - Terminate all active authentication sessions
+  - Enable multi-factor authentication mandate
+  - Audit account for abuse indicators: Anomalous access, mailbox rules, data access
+  - Inspect inbox rules for auto-forwarding mechanisms
+  - Review sent items for subsequent phishing propagation
+- Attachment execution scenario:
+  - Invoke malware investigation procedures
+  - Deploy endpoint network isolation
+  - Terminate malicious process tree
+  - Hunt for lateral movement indicators
+
+POST-INCIDENT:
+- Document complete indicator set: Addresses, domains, URLs, file hashes
+- Enhance email filtering rules with new patterns
+- Deploy targeted security awareness training
+- Issue organization-wide security bulletin for major campaigns
+- Integrate indicators into threat intelligence feeds
+
+LESSONS LEARNED:
+- Audit email gateway effectiveness against observed evasion
+- Tune security controls based on attack characteristics
+- Evaluate additional protective layers: Link rewriting, attachment sandboxing
+- Schedule phishing simulation exercises for high-risk populations
+
+METADATA:
+{
+  "related_runbooks": ["Malware Investigation", "Credential Attack Response", "Data Exfiltration"],
+  "ioc": [
+    {
+      "Type": "domain",
+      "Value": "fake-login-verify.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Delivery"
+    },
+    {
+      "Type": "email",
+      "Value": "security-alert@fake-bank.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Delivery"
+    }
+  ]
+}

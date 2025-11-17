@@ -1,0 +1,100 @@
+Title: Slow-Rate Data Exfiltration
+Severity: High
+MITRE ATT&CK: T1020, T1030
+Version: 1.1
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Network perimeter, Endpoints, Data loss prevention
+Tools: NetFlow analysis, Behavioral analytics, SIEM, DLP, Firewall logging, EDR
+
+DETECTION THRESHOLDS:
+- Sustained transfers: 10-100 MB daily over 7-day minimum
+- Consistent destination addressing over extended period
+- Off-hours transfer predominance (over 70 percent outside business hours)
+- Transfer volumes approaching but not exceeding DLP thresholds
+- Regular transfer timing suggesting automation
+
+DETECTION:
+- Persistent small-volume outbound transfers over extended timeline
+- Intentional evasion of data loss prevention thresholds
+- Unconventional protocols: ICMP tunneling, DNS encoding, steganographic methods
+- Consistent off-hours or weekend data movement
+- Traffic directed to non-business cloud services or anonymization networks
+
+INVESTIGATION:
+- NetFlow behavioral analysis:
+  - Destination consistency tracking over time
+  - Transfer pattern characterization: Timing, volumes, protocol selection
+  - Baseline deviation measurement against historical norms
+  - Aggregate volume calculation across entire attack window
+- User activity correlation:
+  - File access pattern alignment with transfer timeline
+  - Authentication location and timing analysis
+  - Recent privilege or role modifications
+  - Remote access session review
+- Steganographic artifact investigation:
+  - File entropy analysis for hidden payloads
+  - Size anomaly detection for file types
+- Network capture analysis when available:
+  - Protocol behavior examination
+  - Destination service identification
+- Data staging artifact detection:
+  - Temporary file creation before transmission
+  - Compressed archive generation timeline
+  - Filesystem modification sequencing
+
+IMMEDIATE ACTIONS:
+- Enforce network blocking for identified destinations
+- Suspend user account pending investigation completion
+- Monitor for attack acceleration upon detection
+- Capture network traffic for forensic preservation
+
+CONTAINMENT:
+- Aggregate total exfiltrated data across attack duration
+- Identify accessed data during exfiltration window
+- Survey for malware enabling sustained exfiltration
+- Review comprehensive user file access history
+- Isolate compromised endpoint if malware present
+- Rotate credentials assuming full compromise
+
+CONTAINMENT VERIFICATION:
+- Confirm transfer cessation after destination blocking
+- Validate no new staging directories or archives
+- Hunt for alternative exfiltration channels
+
+POST-INCIDENT:
+- Deploy behavioral analytics for slow exfiltration patterns
+- Configure alerts for consistent low-volume transfers
+- Reassess DLP thresholds against evasion techniques
+- Execute comprehensive endpoint forensics
+- Determine data sensitivity classification
+- Execute legal and regulatory notification requirements
+
+LESSONS LEARNED:
+- Establish transfer pattern baselines per user and department
+- Deploy anomaly detection for unusual consistency patterns
+- Monitor aggregate transfers temporally not just volumetrically
+- Implement protocol-aware inspection beyond simple volume monitoring
+- Deploy User and Entity Behavior Analytics platform
+- Execute data classification and tagging initiatives
+
+METADATA:
+{
+  "related_runbooks": ["Bulk Data Exfiltration", "Malware Investigation", "DNS C2 Channel"],
+  "ioc": [
+    {
+      "Type": "IP",
+      "Value": "185.234.56.78",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Exfiltration"
+    },
+    {
+      "Type": "domain",
+      "Value": "attacker-cloud-storage.com",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "Exfiltration"
+    }
+  ]
+}

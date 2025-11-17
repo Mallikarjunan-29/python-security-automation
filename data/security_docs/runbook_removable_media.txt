@@ -1,0 +1,105 @@
+Title: Malicious USB/Removable Media Response
+Severity: High
+MITRE ATT&CK: T1091, T1052.001
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Physical Security
+Tools: EDR, DLP, USB Monitoring, Endpoint Protection
+DETECTION:
+
+Unauthorized USB device insertion
+AutoRun malware execution from removable media
+Suspicious files copied from USB device
+USB device with hidden partitions or files
+USB-related malware signatures detected
+Files executed immediately after USB insertion
+USB devices violating DLP policies
+
+INVESTIGATION:
+
+Check EDR/DLP logs for:
+
+USB device details (vendor ID, product ID, serial number)
+User who inserted device
+Files accessed/executed from USB
+Timestamp of USB insertion
+Files copied to/from USB
+
+
+Analyze USB contents:
+
+Scan USB device for malware
+Check for AutoRun.inf files
+Hidden files or partitions
+Suspicious executables or scripts
+
+
+Identify malicious activity:
+
+Did malware execute from USB?
+Was data exfiltrated to USB?
+Lateral spread to other systems via USB?
+
+
+Determine source of USB device:
+
+Employee-owned device?
+Lost and found device (social engineering)?
+Vendor/contractor device?
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate endpoint where USB was inserted
+Quarantine USB device for forensic analysis
+Kill any processes launched from USB
+Block USB serial number in EDR/DLP
+
+CONTAINMENT:
+
+Scan endpoint for malware from USB
+Run Malware Infection Runbook if infection confirmed
+Check for files copied to USB (data exfiltration?)
+Review all systems accessed by user for USB malware spread
+Disable AutoRun/AutoPlay organization-wide if not already done
+
+POST-INCIDENT:
+
+Forensic analysis of USB device
+Interview user about USB device origin
+Document malware or data exfiltration findings
+Update USB device policy
+Security awareness training on USB risks
+
+LESSONS LEARNED:
+
+Implement USB device whitelisting
+Disable AutoRun/AutoPlay on all systems
+DLP monitoring for USB data transfers
+Physical security controls (USB port locks)
+Endpoint protection scanning removable media
+Alternative file transfer methods (cloud, secure file transfer)
+Security awareness on social engineering USB drops
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Data Exfiltration Runbook, Insider Threat Runbook",
+  "ioc": [
+    {
+      "Type": "usb_device",
+      "Value": "VID_1234_PID_5678",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "file",
+      "Value": "autorun.inf",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "execution"
+    }
+  ]
+}

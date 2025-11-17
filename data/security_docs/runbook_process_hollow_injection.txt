@@ -1,0 +1,109 @@
+Title: Process Hollowing and Injection Detection Response
+Severity: Critical
+MITRE ATT&CK: T1055.012, T1055
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Windows Systems
+Tools: EDR (Crowdstrike, Defender, Sentinel One), SIEM, Memory Forensics, Process Hacker, Volatility
+DETECTION:
+
+Legitimate process spawned in suspended state then resumed
+Process with mismatched memory and disk image
+Processes with unbacked memory regions (no file on disk)
+CreateProcess with CREATE_SUSPENDED flag
+NtUnmapViewOfSection API calls
+Svchost.exe, explorer.exe with unusual memory characteristics
+Parent-child process relationship anomalies
+EDR behavioral detection for process injection patterns
+
+INVESTIGATION:
+
+Check EDR telemetry for:
+
+Source process performing hollowing/injection
+Target process being hollowed
+API calls used (NtUnmapViewOfSection, VirtualAllocEx, WriteProcessMemory)
+Memory allocation patterns and permissions (RWX)
+Timestamp and user context
+
+
+Analyze process characteristics:
+
+Command-line arguments of hollowed process
+Parent process and execution chain
+Process memory regions vs disk image
+Network connections from hollowed process
+Files accessed by injected code
+
+
+Memory forensics:
+
+Dump process memory for analysis
+Extract injected code/payload
+Identify malware family or technique
+Check for multiple injected processes
+
+
+Correlate with other indicators:
+
+Recent malware infections or phishing emails?
+Lateral movement from this system?
+C2 communications detected?
+
+
+
+IMMEDIATE ACTIONS:
+
+Isolate infected endpoint immediately
+Kill source process performing injection
+Terminate hollowed/injected processes
+Block C2 IPs/domains if identified
+
+CONTAINMENT:
+
+Remove malware performing process hollowing
+Check all processes on system for injection indicators
+Run full EDR scan for additional compromises
+Verify no persistence mechanisms installed
+Follow Malware Infection Runbook for complete remediation
+Check for credential dumping if LSASS was targeted
+
+POST-INCIDENT:
+
+Analyze extracted malicious code for IOCs
+Document injection technique and malware family
+Update EDR detection rules for observed TTPs
+Monitor endpoint for 20 days for reinfection
+Share IOCs with threat intelligence team
+
+LESSONS LEARNED:
+
+Enable EDR process injection detection and prevention
+Monitor API calls associated with injection (CreateRemoteThread, NtUnmapViewOfSection)
+Application whitelisting to prevent unauthorized code execution
+Memory integrity verification for critical processes
+Regular EDR rule tuning for injection techniques
+Implement Protected Process Light (PPL) for sensitive processes
+User awareness training on phishing and malware delivery
+
+METADATA:
+json{
+  "related_runbooks": "Reflective DLL Injection Runbook, Malware Infection Runbook, Credential Dumping Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "hollowing_malware.exe",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "defense_evasion"
+    },
+    {
+      "Type": "technique",
+      "Value": "Process Hollowing",
+      "Action": "detected",
+      "duration_in_days": 90,
+      "ckc_stage": "defense_evasion"
+    }
+  ]
+}

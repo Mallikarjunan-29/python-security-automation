@@ -1,0 +1,111 @@
+Title: OAuth Token Theft and Abuse Response
+Severity: High
+MITRE ATT&CK: T1528, T1550.001
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Cloud Services, SaaS Applications, APIs
+Tools: CASB, SIEM, Cloud Access Logs, OAuth Audit Tools
+DETECTION:
+
+OAuth token used from unusual location or IP
+Stolen refresh token enabling persistent access
+Access token replay from multiple locations
+Overly permissive OAuth scope grants
+OAuth app consent from phishing attack
+Token usage patterns inconsistent with user behavior
+Impossible travel using same OAuth token
+Malicious OAuth applications granted permissions
+
+INVESTIGATION:
+
+Check OAuth token logs:
+
+Which tokens are being abused?
+Token scope and permissions granted
+Application or service using the token
+Source IPs and geolocations of token usage
+Token lifetime and refresh patterns
+
+
+Review OAuth app consent:
+
+When was OAuth app authorized?
+What permissions were granted?
+Legitimate app or malicious phishing?
+How many users granted consent to app?
+
+
+Analyze token theft vector:
+
+Phishing for OAuth consent?
+Token harvested from compromised system?
+Developer accidentally exposed token?
+Insecure token storage (logs, repos, plaintext)?
+
+
+Check data accessed via token:
+
+Email, files, calendar access?
+API calls made with stolen token
+Data exfiltration using token access
+
+
+
+IMMEDIATE ACTIONS:
+
+Revoke compromised OAuth tokens immediately
+Revoke consent for malicious OAuth applications
+Block malicious OAuth app from tenant
+Force reauthentication for affected users
+
+CONTAINMENT:
+
+Audit all OAuth applications granted consent
+Review OAuth permissions for excessive scope
+Implement OAuth app allow-listing
+Check for additional stolen tokens
+Review all API calls made with compromised tokens
+Force password reset if credentials also compromised
+
+POST-INCIDENT:
+
+Document malicious OAuth app details
+Notify users who granted consent to malicious app
+Review OAuth security policies
+Implement OAuth consent screening
+Monitor for 30 days for additional token abuse
+Security awareness training on OAuth phishing
+
+LESSONS LEARNED:
+
+Implement OAuth app consent policies
+User and admin consent requirements
+OAuth app reputation and risk scoring
+Conditional access for OAuth applications
+Token lifetime limits and rotation
+Monitor OAuth app permissions continuously
+Secure token storage (never in plaintext, logs, or repos)
+OAuth phishing awareness training
+Implement OAuth app allow-list for organization
+
+METADATA:
+json{
+  "related_runbooks": "Account Takeover Runbook, Phishing Runbook, Compromised Cloud Account Runbook",
+  "ioc": [
+    {
+      "Type": "oauth_app",
+      "Value": "malicious-oauth-app-id",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "initial_access"
+    },
+    {
+      "Type": "IP",
+      "Value": "token_abuse_ip",
+      "Action": "blocked",
+      "duration_in_days": 180,
+      "ckc_stage": "credential_access"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+Title: Ransomware Attack Response Runbook
+Severity: Critical
+MITRE ATT&CK: T1486, T1490
+Version: 1.0
+Last Updated: 15-Nov-2025
+Author: Security Operations Team
+Environment: Endpoints, Network, File Servers
+Tools: EDR (Crowdstrike, Defender, Sentinel One), SIEM (IBM Qradar/Splunk/Sentinel), VirusTotal, Backup Systems
+DETECTION:
+
+Mass file encryption detected on endpoints
+Ransom notes appearing on systems (.txt, .html files)
+Unusual file extension changes (.locked, .encrypted, .crypto)
+Shadow copy deletion events (vssadmin delete shadows)
+Backup system access/deletion attempts
+Encryption-related process names (e.g., encrypt.exe, locker.exe)
+
+INVESTIGATION:
+
+Check EDR logs for:
+
+Initial infection vector (email attachment, RDP, vulnerability?)
+Encryption start time and patient zero
+Affected file servers and endpoints
+Ransom note contents and attacker contact info
+
+
+Correlate with Active Directory:
+
+Which user account initiated encryption?
+Was domain admin compromised?
+Check for privilege escalation events
+
+
+Verify backup integrity:
+
+Are backups accessible and clean?
+When was last good backup taken?
+Were backups encrypted or deleted?
+
+
+Check for lateral movement indicators
+Identify ransomware variant (search ransom note text online)
+
+IMMEDIATE ACTIONS:
+
+DO NOT shut down systems immediately (may lose RAM artifacts)
+Isolate infected systems from network (disconnect switches/VLANs)
+Disable compromised user accounts in Active Directory
+Block C2 IPs/domains in firewall immediately
+Take memory dumps of critical infected systems before shutdown
+Protect backup systems - air-gap or take offline
+
+CONTAINMENT:
+
+Segment network to prevent spread
+Kill ransomware processes on infected systems
+Isolate file servers and domain controllers if compromised
+Check all systems for ransomware indicators (hash matching)
+Verify no persistence mechanisms (scheduled tasks, registry keys)
+Change all domain passwords if domain admin compromised
+
+POST-INCIDENT:
+
+DO NOT PAY RANSOM without legal/executive approval
+Restore from clean backups (verify no malware present)
+Rebuild compromised systems from scratch
+Report to law enforcement (FBI IC3, local cybercrime unit)
+Notify legal/compliance teams
+Document ransom amount, attacker TTP, recovery time
+Contact cyber insurance if applicable
+
+LESSONS LEARNED:
+
+Implement 3-2-1 backup strategy (3 copies, 2 media types, 1 offsite)
+Enable ransomware protection in EDR/AV solutions
+Disable RDP exposure to internet
+Implement application whitelisting
+Regular offline backup testing and verification
+Security awareness training on phishing/malicious attachments
+
+METADATA:
+json{
+  "related_runbooks": "Malware Infection Runbook, Data Exfiltration Runbook, Phishing Runbook",
+  "ioc": [
+    {
+      "Type": "process",
+      "Value": "encrypt.exe",
+      "Action": "deleted",
+      "duration_in_days": 0,
+      "ckc_stage": "impact"
+    },
+    {
+      "Type": "IP",
+      "Value": "45.67.89.123",
+      "Action": "blocked",
+      "duration_in_days": 365,
+      "ckc_stage": "command_and_control"
+    }
+  ]
+}
