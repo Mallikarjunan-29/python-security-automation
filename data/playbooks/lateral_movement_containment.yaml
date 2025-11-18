@@ -1,0 +1,85 @@
+name: "Lateral Movement Containment"
+description: "Responds to lateral movement activity detected between internal hosts."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+  last_updated: "2025-11-16"
+  mitre_techniques: ["T1021", "T1078"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: Critical
+  behavior: lateral_movement
+
+steps:
+  - action: isolate_host
+    platform: EDR
+    input:
+      hostname: "${alert.host}"
+
+  - action: block_internal_connection
+    platform: Firewall
+    input:
+      source_ip: "${alert.network.source_ip}"
+      dest_ip: "${alert.network.destination_ip}"
+
+  - action: kill_process
+    platform: EDR
+    input:
+      process_id: "${alert.process.process_id}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=windows OR index=endpoints
+        src="${alert.network.source_ip}"
+        dest="${alert.network.destination_ip}"
+        | table _time, user, src, dest, process_name
+
+  - action: reset_user_password
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
+
+ticket:
+  title: "Lateral Movement detected on host ${alert.host}"
+  description: "Suspicious connection observed from ${alert.network.source_ip} to ${alert.network.destination_ip}. Immediate containment required."
+  
+roles_and_responsibilities:
+  L1:
+    - Triage lateral movement alert
+    - Document affected hosts and users
+  L2:
+    - Validate attack scope
+    - Approve host isolation and network blocks
+    - Confirm EDR process termination
+  IR_team:
+    - Collect forensic evidence
+    - Ensure containment and prevent further lateral movement
+    - Update incident ticket with all steps
+
+integration_tools:
+  firewall: "Palo Alto / Cisco / Fortinet"
+  edr: "CrowdStrike / SentinelOne / Defender"
+  siem: "Splunk / QRadar / Sentinel"
+  directory: "Active Directory / Azure AD"
+  ticketing: "ServiceNow"
+
+success_criteria:
+  - "Host isolated successfully"
+  - "Internal connection blocked"
+  - "Malicious process terminated"
+  - "Affected user account secured"
+  - "Splunk investigation completed"
+  - "Incident ticket created"
+
+output:
+  type: "execution_summary"
+  format: "json"

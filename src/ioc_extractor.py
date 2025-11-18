@@ -114,10 +114,12 @@ def extract_behavior(alert_text: str) -> str:
     # 7. Brute Force Authentication
     if "failed login" in text or "brute force" in text or "password spray" in text:
         return "brute_force_auth"
+    
+    
+    # 13. Data Exfil via DNS
+    if "exfil" in text or "exfiltration" in text:
+        return "data_exfiltration"
 
-    # 8. Malware Download
-    if ".exe" in text or ".dll" in text or "malware download" in text:
-        return "malware_download"
 
     # 9. Ransomware Behavior
     if "file encryption" in text or "shadow copy" in text:
@@ -145,7 +147,7 @@ def extract_behavior(alert_text: str) -> str:
 
     # 15. Suspicious Process Creation
     if "cmd.exe" in text or "powershell" in text or "wscript" in text:
-        return "suspicious_process_creation"
+        return "suspicious_powershell"
 
     # 16. Persistence via Registry
     if "run key" in text or "startup folder" in text:
@@ -183,6 +185,11 @@ def extract_behavior(alert_text: str) -> str:
     if "sql injection" in text or "xss" in text or "lfi" in text or "rfi" in text:
         return "web_attack_pattern"
 
+    
+    # 8. Malware Download
+    if ".exe" in text or ".dll" in text or "malware download" in text:
+        return "malware_download"
+    
     # 25. Unknown / fallback
     return "unknown"
 

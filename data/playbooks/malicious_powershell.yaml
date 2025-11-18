@@ -1,0 +1,83 @@
+name: "Malicious PowerShell Response"
+description: "Responds to malicious PowerShell execution on a Windows endpoint."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+  last_updated: "2025-11-16"
+  mitre_techniques: ["T1059.001", "T1105"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: Critical
+  behavior: malicious_powershell
+
+steps:
+  - action: isolate_host
+    platform: EDR
+    input:
+      hostname: "${alert.host}"
+
+  - action: kill_process
+    platform: EDR
+    input:
+      process_id: "${alert.process.process_id}"
+
+  - action: block_ip
+    platform: Firewall
+    input:
+      ip: "${alert.network.destination_ip}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=windows sourcetype=powershell*
+        host="${alert.host}"
+        _time>=relative_time("${alert._time}", "-24h")
+        | table _time, user, command_line, process_id
+
+  - action: reset_user_password
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
+
+ticket:
+  title: "Malicious PowerShell activity detected on host ${alert.host}"
+  description: "Suspicious PowerShell execution detected. Process ID: ${alert.process.process_id}, executed by user ${alert.user}."
+
+roles_and_responsibilities:
+  L1:
+    - Validate PowerShell alert and perform initial triage
+    - Identify malicious command and user impact
+  L2:
+    - Approve host isolation and process termination
+    - Review Splunk search results and validate malicious behavior
+  IR_team:
+    - Conduct deep dive forensic investigation
+    - Collect PowerShell logs, memory artifacts
+    - Complete containment and provide incident summary
+
+integration_tools:
+  firewall: "Palo Alto / Fortinet / Cisco"
+  edr: "CrowdStrike / SentinelOne / Defender for Endpoint"
+  siem: "Splunk / Sentinel / QRadar"
+  directory: "Active Directory / Azure AD"
+  ticketing: "ServiceNow"
+
+success_criteria:
+  - "Malicious PowerShell session terminated"
+  - "Host successfully isolated"
+  - "Destination IP blocked if C2 detected"
+  - "User account secured"
+  - "24-hour PowerShell activity reviewed in Splunk"
+  - "Incident ticket created"
+
+output:
+  type: "execution_summary"
+  format: "json"

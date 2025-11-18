@@ -1,0 +1,73 @@
+name: "Brute Force Attack Mitigation"
+description: "Handles brute force authentication attempts across AD, servers, or endpoints."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+  last_updated: "2025-11-16"
+  mitre_techniques: ["T1110"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: High
+  behavior: brute_force
+
+steps:
+  - action: block_ip
+    platform: Firewall
+    input:
+      ip: "${alert.source.ip}"
+
+  - action: disable_user
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=auth (user="${alert.user}" OR src="${alert.source.ip}")
+        | stats count by user, src, status
+
+  - action: reset_user_password
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
+ticket:
+  title: "Brute Force Attack detected on user ${alert.user}"
+  description: "Multiple failed login attempts detected from IP ${alert.source.ip} targeting user ${alert.user}."
+
+roles_and_responsibilities:
+  L1:
+    - Perform initial triage of brute force alert
+    - Validate alert metadata and attempt count
+  L2:
+    - Validate true positive
+    - Approve account disable + password reset
+    - Confirm IP reputation and related activity
+  IR_team:
+    - Collect forensic evidence
+    - Ensure containment and initiate recovery steps
+
+integration_tools:
+  firewall: "Palo Alto / Cisco / Fortinet"
+  directory: "Active Directory / Azure AD"
+  siem: "Splunk / QRadar / Sentinel"
+  ticketing: "ServiceNow"
+
+success_criteria:
+  - "Source IP successfully blocked"
+  - "User account disabled"
+  - "Password reset completed"
+  - "Relevant Splunk evidence collected"
+  - "Incident ticket created"
+
+output:
+  type: "execution_summary"
+  format: "json"
