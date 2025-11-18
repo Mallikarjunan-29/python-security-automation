@@ -1,0 +1,80 @@
+name: "Phishing Email Response"
+description: "Detects and contains phishing attacks delivered via email."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+  last_updated: "2025-11-16"
+  mitre_techniques: ["T1566", "T1204"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: High
+  behavior: phishing_email
+
+steps:
+  - action: block_sender
+    platform: EmailGateway
+    input:
+      sender: "${alert.email.sender}"
+
+  - action: quarantine_email
+    platform: EmailGateway
+    input:
+      message_id: "${alert.email.message_id}"
+
+  - action: url_reputation_lookup
+    platform: ThreatIntel
+    input:
+      url: "${alert.email.url}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=o365 sourcetype="o365:exchange"
+        recipient="${alert.email.recipient}"
+        | table _time, sender, subject, url
+
+  - action: notify_user
+    platform: Email
+    input:
+      user: "${alert.email.recipient}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
+
+ticket:
+  title: "Phishing Email detected for recipient ${alert.email.recipient}"
+  description: "Email from ${alert.email.sender} with URL ${alert.email.url} identified as phishing. Message quarantined."
+
+roles_and_responsibilities:
+  L1:
+    - Validate email alert and perform initial triage
+    - Block sender and quarantine email
+  L2:
+    - Analyze phishing email content and URLs
+    - Perform threat intelligence enrichment
+  IR_team:
+    - Investigate any impacted accounts
+    - Document and escalate if needed
+    - Complete incident ticket
+
+integration_tools:
+  email_gateway: "Proofpoint / Mimecast / Microsoft 365"
+  threat_intel: "VirusTotal / OTX / GreyNoise"
+  siem: "Splunk / QRadar / Sentinel"
+  ticketing: "ServiceNow"
+
+success_criteria:
+  - "Sender blocked and email quarantined"
+  - "All URLs assessed for reputation"
+  - "Recipients notified"
+  - "Incident ticket created"
+  - "No active phishing emails in mailbox"
+
+output:
+  type: "execution_summary"
+  format: "json"

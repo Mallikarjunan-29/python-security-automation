@@ -1,0 +1,83 @@
+name: "Data Exfiltration Response"
+description: "Detects and stops data exfiltration to external destinations."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+  last_updated: "2025-11-16"
+  mitre_techniques: ["T1041", "T1567"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: Critical
+  behavior: data_exfiltration
+
+steps:
+  - action: block_ip
+    platform: Firewall
+    input:
+      ip: "${alert.network.destination_ip}"
+
+  - action: isolate_host
+    platform: EDR
+    input:
+      hostname: "${alert.host}"
+
+  - action: terminate_network_transfer
+    platform: EDR
+    input:
+      process_id: "${alert.process.process_id}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=network traffic.dest="${alert.network.destination_ip}"
+        | stats sum(bytes_out) as exfil_volume by src, dest, app
+
+  - action: notify_security_team
+    platform: Email
+    input:
+      alert_id: "${alert.id}"
+      volume: "${alert.network.bytes_out}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
+
+ticket:
+  title: "Data Exfiltration Detected from ${alert.host}"
+  description: "Detected data transfer of ${alert.network.bytes_out} bytes to ${alert.network.destination_ip} from host ${alert.host}."
+
+roles_and_responsibilities:
+  L1:
+    - Triage alert and validate source/destination details
+    - Monitor network transfer logs
+  L2:
+    - Confirm data exfiltration attempt
+    - Authorize host isolation and network blocking
+    - Validate EDR termination of exfil process
+  IR_team:
+    - Collect forensic evidence
+    - Ensure containment of exfiltration
+    - Update incident ticket with findings
+
+integration_tools:
+  firewall: "Palo Alto / Cisco / Fortinet"
+  edr: "CrowdStrike / SentinelOne / Defender"
+  siem: "Splunk / QRadar / Sentinel"
+  ticketing: "ServiceNow"
+  email: "Exchange / SMTP Server"
+
+success_criteria:
+  - "Source IP successfully blocked"
+  - "Host isolated successfully"
+  - "Malicious process terminated"
+  - "Exfil volume monitored and confirmed stopped"
+  - "Security team notified"
+  - "Incident ticket created"
+
+output:
+  type: "execution_summary"
+  format: "json"

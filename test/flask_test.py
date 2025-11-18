@@ -6,7 +6,9 @@ import json
 from datetime import datetime
 sys.path.append(os.getcwd())
 from ai_projects.batch_processor import test_function
+from src.ioc_extractor import extract_behavior
 from src.logger_config import get_logger
+from ai_projects.soar.executor import execute_playbook
 logger=get_logger(__name__)
 app=Flask(__name__)
 
@@ -126,12 +128,33 @@ def analyze():
                     "runbook":results['runbooks']
                 }
                 resultset.append(data_to_add)
+                
             last_request_info={
                 "endpoint": "/analyze",
                 "timestamp": format_datetime(datetime.now()),
                 "alerts_processed": len(resultset),
                 "processing_time": total_time
             }
+
+            behaviour=extract_behavior(data)
+            if resultset[0]['classification']=="TRUE_POSITIVE":
+                if behaviour=="brute_force_auth":
+                    playbook_execution= execute_playbook(os.path.join(os.getcwd(),"data/playbooks/brute_force_mitigation.yaml"),data)
+                elif "exfil" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/data_exfiltration_response.yaml"),data)
+                elif "lateral" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/lateral_movement_containment.yaml"),data)
+                elif "powershell" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/malicious_powershell.yaml"),data)
+                elif "phishing" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/phishing_response.yaml"),data)
+                else:
+                    playbook_execution={"status":"no_matching_playbook"}
+            else:
+                playbook_execution=None
+            
+            resultset[0]['playbook_execution']=playbook_execution
+
             return jsonify(resultset)
         else:
             return jsonify({"message":"No data"})

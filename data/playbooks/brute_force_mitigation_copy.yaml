@@ -1,0 +1,41 @@
+name: "Brute Force Attack Mitigation"
+description: "Handles brute force authentication attempts across AD, servers, or endpoints."
+
+metadata:
+  author: "Security Team"
+  version: "1.0"
+   last_updated: "2025-11-16"
+  mitre_techniques: ["T1110"]
+
+trigger:
+  classification: TRUE_POSITIVE
+  severity: High
+  behavior: brute_force
+
+steps:
+  - action: block_ip
+    platform: Firewall
+    input:
+      ip: "${alert.source.ip}"
+
+  - action: disable_user
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: splunk_search
+    platform: Splunk
+    input:
+      query: >
+        index=auth (user="${alert.user}" OR src="${alert.source.ip}")
+        | stats count by user, src, status
+
+  - action: reset_user_password
+    platform: ActiveDirectory
+    input:
+      user: "${alert.user}"
+
+  - action: create_ticket
+    platform: ServiceNow
+    input:
+      alert_id: "${alert.id}"
