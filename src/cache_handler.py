@@ -15,7 +15,8 @@ class CacheHandler:
         logger.debug(f"Caching intel")
         try:
             with open (path,"w") as f:
-                json.dump(data,f,indent=4)           
+                json.dump(data,f,indent=4)  
+                logger.debug(f"cached to {path}")         
         except Exception as e:
             logger.error(e)    
 

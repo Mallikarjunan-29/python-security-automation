@@ -94,7 +94,7 @@ def home():
 def analyze():
     try:
         global last_request_info
-        data=request.get_json(silent=True)
+        data=request.get_json(force=True)
         if not data:
             message={
                 "status":"error",
@@ -119,8 +119,8 @@ def analyze():
                     "confidence":results["Confidence"],
                     "severity":results["AISeverity"],
                     "reasoning":results["Reasoning"],
-                    "threat_intel":ti_values if ti_values else "",
-                    "ai_cache_hit":ai_values if ai_values else "",
+                    "priority":results["Priority"],
+                    "title":results["Title"],
                     "performance":{
                         "processing_time":total_time,
                         "total_cost":f"${results['TimingBreakDown']['CalculateCost']}"
@@ -136,7 +136,8 @@ def analyze():
                 "processing_time": total_time
             }
 
-            behaviour=extract_behavior(data)
+            #behaviour=extract_behavior(data)
+            behaviour=""
             if resultset[0]['classification']=="TRUE_POSITIVE":
                 if behaviour=="brute_force_auth":
                     playbook_execution= execute_playbook(os.path.join(os.getcwd(),"data/playbooks/brute_force_mitigation.yaml"),data)
@@ -280,4 +281,4 @@ def healthcheck():
 
     
 if __name__=="__main__":
-    app.run(debug=True,port=5000)
+    app.run(debug=True,port=5000,host="0.0.0.0")

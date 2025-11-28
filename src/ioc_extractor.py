@@ -24,7 +24,7 @@ def extract_ioc(data):
     data = data.replace("[.]", ".").replace("(.)", ".").replace("[dot]", ".")
     data = data.replace("hxxp://", "http://").replace("hxxps://", "https://")
     #url_pattern=r"(?i)(?:(?:https?|hxxp|ftp):\/\/)?(?:[a-z0-9](?:[a-z0-9-]{1,61})?[0-9a-z]?\.)+(?:[a-z]{2,}*)?(?::\d{1,5})?(?:\/[^\s]*)?"
-    url_pattern=r"(?i)(?:https?|ftp):\/\/[a-zA-Z0-9](?:[a-z0-9-]{1,61}[a-z0-9]\.)*(?:[a-z]{2,})(?::\d{1,5})?(?:\/[^\s]*)"
+    url_pattern=r"https?:\/\/(?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-z](?:[a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.)*[a-z]{2,}))(?::\d{1,5})?(?:\/[^\s]*)?"
     valid_urls=[]
     valid_domains=[]
     for match in re.finditer(url_pattern,data,re.IGNORECASE):
@@ -36,7 +36,10 @@ def extract_ioc(data):
             if parsed.netloc:
                 # Remove space in urls
                 valid_urls.append(url)
-                valid_domains.append(parsed.hostname)
+                if (parsed.hostname ==  ip for ip in valid_ips):
+                    continue
+                else:
+                    valid_domains.append(parsed.hostname)
         except Exception as e:
             logger.error(str(e))
             continue
@@ -44,7 +47,7 @@ def extract_ioc(data):
     # =============================================================
     # EXTRACTING DOMAINS
     # =============================================================
-    domains=re.findall(r"(?i)([a-z](?:[a-z0-9-]{1,63}[a-z0-9])?\.)+[a-z]{2,}",data)
+    domains=re.findall(r"(?i)\b(?:[a-z](?:[a-z0-9-]{1,61}[a-z0-9])?\.)+[a-z]{2,}\b",data) 
     for domain in domains:
         if domains in valid_domains:
             continue
@@ -195,5 +198,5 @@ def extract_behavior(alert_text: str) -> str:
 
 
 if __name__=="__main__":
-    ioc=extract_ioc("IP 203.0.113.45 and 10.10.10.10 communicated with host HOST-123, triggering a connection to domain http://evil-example.com/login and test.com and a.co.in and an email to test@sub-domain.test.com")
+    ioc=extract_ioc({  "alert_id": "alert-1023",  "timestamp": "2025-11-20T15:30:00Z",  "source_ip": "203.0.113.45", "destination_ip": "198.51.100.22",  "user": "bob@victimcorp.com",  "failed_logins": 5,  "description": "Multiple failed login attempts detected",  "urls": [    "http://8.148.5.67/02.08.2022.exe"  ]})
     print(ioc)

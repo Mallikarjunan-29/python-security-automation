@@ -66,6 +66,8 @@ Classify as :
 - classification: one of "TRUE_POSITIVE", "FALSE_POSITIVE", "NEEDS_REVIEW" (string).
 - confidence: integer 0-100 (no % sign).
 - severity: one of "Critical","High","Medium","Low"
+- priority: 4 for Critical, 3 for High, 2 for Medium and 1 for low
+- title: Brute force ( Title for populating in case management)
 - reasoning: array of exactly 4 strings. Each string max 50 words. No bullet characters, no newlines inside items.
 - Do NOT output any extra text, commentary, or code fences. Output must be parseable by json.loads().
 - Include Analyst override if available
@@ -86,13 +88,15 @@ OUTPUT_SCHEMA:
   "classification": "TRUE_POSITIVE",
   "confidence": 95,
   "severity": "Critical",
+  "priority": 1,
+  "title":"Brute force",
   "reasoning": [
     "One-sentence reason 1 (<=50 words).",
     "One-sentence reason 2 (<=50 words).",
     "One-sentence reason 3 (<=50 words).",
     "One-sentence reason 4 (<=50 words).",
   ],
-  "semantic": "search query for runbook matching"
+  "semantic": "title Mitre"
 }}
 """
     logger.debug("Prompt Building ended")

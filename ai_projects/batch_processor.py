@@ -96,6 +96,8 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
         "Confidence": ai_output['confidence'],
         "Reasoning": ai_output['reasoning'],
         "AISeverity":ai_output['severity'],
+        "Priority":ai_output['priority'],
+        "Title":ai_output['title'],
         "TotalTime":thread_end,
         "TimingBreakDown":alert_timing.copy(),
         "TI_Cache":alert_ti_cache_data.copy(),
