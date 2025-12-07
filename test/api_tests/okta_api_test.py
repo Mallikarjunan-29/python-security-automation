@@ -11,7 +11,7 @@ def okta_test(method,id="",search=""):
         id = quote_plus(id)
         
     if search !="":
-       params['filter']='status eq "ACTIVE" and lastLogin gt "2025-11-25"'
+       params['filter']='status eq "PROVISIONED"'
 
     url=f"https://integrator-1776498.okta.com/{method}/{id}"
     api_key=os.getenv("OKTA")
@@ -43,9 +43,9 @@ def create_user():
     response=requests.post(url,json=payload,headers=headers)
     response.raise_for_status()
 
-def web_booktest(login):
+def web_booktest(login,days=0):
     #url="https://long-water-5102.tines.com/webhook/OktaUserCreation/2be6ab310fc1156f8d25ebb174cc34cb"
-    url2="http://localhost:5678/webhook/createuserokta"
+    url2="http://localhost:5678/webhook/TempUsrCreate"
     data={
         "profile": {
     "firstName": "Arjun",
@@ -53,7 +53,9 @@ def web_booktest(login):
     "email": "arjuneddy@gmail.com",
     "login": login,
     "mobilePhone": "947-270-5070"
-  }
+  },
+  "groups":["Engineering","Medicine"],
+  "days":days
     }
     header={
         "Content-Type":"application/json"
@@ -92,23 +94,44 @@ def delete_okta_user(userid,method):
     }
     response=requests.post(url,json=data,headers=header)
     response.raise_for_status()
+
+def group_add():
+    url="http://localhost:5678/webhook/createoktagroup"
+    
+    
+    
+    payload={
+        "profile":{
+            "name":"Medicine",
+            "description":"Medicine group"
+        }
+    }
+
+    response=requests.post(url=url,json=payload)
+    response.raise_for_status()
+
+
+
 if __name__=="__main__":
-    #okta_test("api/v1/users")
+   # okta_test("api/v1/users")
     #create_user()
+    """
+    web_booktest("arjuneddy32@gmail.com",90)
+    web_booktest("arjuneddy25@gmail.com",90)
+    web_booktest("arjuneddy24@gmail.com",90)
+    web_booktest("arjuneddy26@gmail.com",90)
+    web_booktest("arjuneddy27@gmail.com",90)
     
-    web_booktest("arjuneddy23@gmail.com")
-    web_booktest("arjuneddy25@gmail.com")
-    web_booktest("arjuneddy24@gmail.com")
-    web_booktest("arjuneddy26@gmail.com")
-    web_booktest("arjuneddy27@gmail.com")
-    
+    """
     delete_okta_user("arjuneddy24@gmail.com","suspend")
-    delete_okta_user("arjuneddy23@gmail.com","suspend")
+    delete_okta_user("arjuneddy32@gmail.com","suspend")
     delete_okta_user("arjuneddy25@gmail.com","suspend")
     delete_okta_user("arjuneddy26@gmail.com","suspend")
     delete_okta_user("arjuneddy27@gmail.com","suspend")
+    #delete_okta_user("arjuneddy30@gmail.com","suspend")
     
     
+    #group_add()
     
     
     
