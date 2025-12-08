@@ -136,9 +136,10 @@ def analyze():
                 "processing_time": total_time
             }
 
-            #behaviour=extract_behavior(data)
-            behaviour=""
+            #behaviour=extract_behavior(title)
+            behaviour=resultset[0]['title']
             if resultset[0]['classification']=="TRUE_POSITIVE":
+                
                 if behaviour=="brute_force_auth":
                     playbook_execution= execute_playbook(os.path.join(os.getcwd(),"data/playbooks/brute_force_mitigation.yaml"),data)
                 elif "exfil" in behaviour:

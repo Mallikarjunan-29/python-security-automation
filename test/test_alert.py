@@ -1054,4 +1054,36 @@ def test_function():
         logger.error(e)
         print(e)
 
-test_function()
+
+def alert_flatten(alert:dict,prefix=""):
+    new_alert={}
+    for key,value in alert.items():
+        if not isinstance(value,dict):
+            if prefix=="":
+              new_alert[key]=value
+            else:
+                new_alert[f"{prefix}.{key}"]=value
+        else:
+            new_alert.update(alert_flatten(value,key))
+    return new_alert
+        
+        
+if __name__=="__main__":
+    alert={
+  "alert_id": "ALRT-99821",
+  "name": "Suspicious Console Login",
+  "severity": "High",
+  "category": "Authentication",
+  "timestamp": "2025-12-07T04:22:11Z",
+  "actor": {
+    "user": {
+      "username": "john.doe@company.com",
+      "user_id": "AIDA89123XYZ",
+      "mfa_enabled": False,
+      "roles": ["Admin", "PowerUser"],
+      "tags": {
+        "department": "Finance",
+        "privileged": True
+      }}}}
+    alert=alert_flatten(alert)
+    print(alert)
