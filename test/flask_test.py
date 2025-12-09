@@ -5,10 +5,12 @@ import time
 import json
 from datetime import datetime
 sys.path.append(os.getcwd())
+from src import hive_integration 
 from ai_projects.batch_processor import test_function
 from src.ioc_extractor import extract_behavior
 from src.logger_config import get_logger
 from ai_projects.soar.executor import execute_playbook
+from src.integrations.slack_integration import SlackIntegration
 logger=get_logger(__name__)
 app=Flask(__name__)
 
@@ -137,6 +139,19 @@ def analyze():
             }
 
             #behaviour=extract_behavior(title)
+            # Creating case in hive
+            hive_response=hive_integration.create_case(resultset[0])
+            slack_data={
+                "title":f"{hive_response['number']} - {resultset[0]['title']}",
+                "classification":resultset[0]['classification'],
+                "confidence":resultset[0]['confidence'],
+                "severity":resultset[0]['severity'],
+                "reasoning":resultset[0]['reasoning'],
+                "runbook":resultset[0]['runbook'] if resultset[0]['classification'] == 'TRUE_POSITIVE' else "None"
+            }
+
+            slack_obj=SlackIntegration()
+            slack_obj.send_alert_notification(slack_data)
             behaviour=resultset[0]['title']
             if resultset[0]['classification']=="TRUE_POSITIVE":
                 
