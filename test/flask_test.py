@@ -1,9 +1,12 @@
-from flask import Flask,jsonify,request
+from flask import Flask,jsonify,request,url_for,redirect
+from authlib.integrations.flask_client import OAuth
+from flask_jwt_extended import JWTManager,create_access_token,jwt_required,get_jwt_identity
+from flask_jwt_extended.exceptions import NoAuthorizationError
 import sys
 import os
 import time
 import json
-from datetime import datetime
+from datetime import datetime,timedelta
 sys.path.append(os.getcwd())
 from src import hive_integration 
 from ai_projects.batch_processor import test_function
@@ -13,6 +16,39 @@ from ai_projects.soar.executor import execute_playbook
 from src.integrations.slack_integration import SlackIntegration
 logger=get_logger(__name__)
 app=Flask(__name__)
+jwt=JWTManager(app)
+import os
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", 1)))
+app.secret_key=os.getenv("FLASK_SECRET_KEY")
+oauth=OAuth(app)
+okta=oauth.register(
+    name="okta",
+    client_id=os.getenv("OKTA_CLIENT_ID"),
+    client_secret=os.getenv("OKTA_SECRET"),
+    server_metadata_url=os.getenv("OKTA_ISSUER")+"/.well-known/openid-configuration",
+     client_kwargs={'scope': 'openid profile email'}
+)
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({
+        "error": "Token has expired",
+        "message": "Please login again"
+    }), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({
+        "error": "Invalid token",
+        "message": "Signature verification failed"
+    }), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    return jsonify({
+        "error": "Authorization required",
+        "message": "Request does not contain a valid token"
+    }), 401
 
 def format_datetime(date_time):
     try:
@@ -92,9 +128,87 @@ def home():
         "response":"success"
     })
 
+@app.route("/login")
+def login():
+    redirect_url=url_for("auth_callback",_external=True)
+    okta=oauth.create_client('okta')
+    return okta.authorize_redirect(redirect_url)
+
+@app.route('/authorization-code/callback')
+def auth_callback():
+    # Step 1 & 2: Get the token from Okta
+    token = oauth.okta.authorize_access_token()  # exchanges code automatically
+    user_info = token.get('userinfo')  # identity info
+    
+    # Step 3 & 4: Create internal JWT for your app
+    identity = user_info['sub']  # or email/username
+    jwt_token = create_access_token(identity=identity)
+    
+    return jsonify({
+        "okta_identity": identity,
+        "jwt_token": jwt_token
+    }),200
+
+@app.route("/login/demo", methods=['POST'])
+def demo_login():
+    """
+    Simple login for demo purposes
+    Accepts: {"username": "admin", "password": "demo123"}
+    Returns: JWT token
+    """
+    try:
+        data = request.get_json()
+        
+        # Q1: What validation do you need?
+        if not data:
+            return jsonify({"error": "Missing credentials"}), 400
+        
+        username = data.get("username")
+        password = data.get("password")
+        
+        if not username or not password:
+            return jsonify({"error": "Username and password required"}), 400
+        
+        # Q2: How do you validate credentials?
+        # For demo: Hardcoded user
+        DEMO_USERS = {
+            "admin": "demo123",
+            "analyst": "demo123"
+        }
+        
+        if username not in DEMO_USERS or DEMO_USERS[username] != password:
+            return jsonify({"error": "Invalid credentials"}), 401
+        
+        # Q3: What goes in the token payload?
+        access_token = create_access_token(
+            identity=username,
+            additional_claims={
+                "role": "analyst" if username == "analyst" else "admin",
+                "login_method": "demo"
+            }
+        )
+        
+        return jsonify({
+            "access_token": access_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,  # 1 hour
+            "username": username
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({"error": "Authentication failed"}), 500
+
+
 @app.route("/analyze",methods=['POST'])
+@jwt_required()
 def analyze():
     try:
+
+        current_user=get_jwt_identity()
+        
+        if not current_user:
+            return jsonify({"error":"forbidden"}),403
         global last_request_info
         data=request.get_json(force=True)
         if not data:
@@ -183,6 +297,13 @@ def analyze():
 
 @app.route("/batch",methods=['POST'])
 def batch_process():
+    current_user=get_jwt_identity()
+    if not current_user:
+        return jsonify(
+            {
+                "message":"Get token first"
+            }
+        ),403
     try:
         data=request.get_json(silent=True)
         if not data:

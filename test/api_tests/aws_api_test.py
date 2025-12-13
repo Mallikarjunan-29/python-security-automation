@@ -9,7 +9,15 @@ def iam_create():
     response=client.create_user(
         UserName="test-user"
     )
-    print(response)
+
+def credential_report():
+    client=boto3.client("iam")
+    response = client.generate_credential_report()
+    if "State" in response and response['State']=="COMPLETE":
+        report=client.get_credential_report()
+    else:
+        time.sleep(5)
+    print(report.content)
 
 def aws_create(username,email,path="",permission_boundary="",tags=""):
     url="http://localhost:5678/webhook/aws-create-user"
@@ -127,4 +135,5 @@ if __name__=="__main__":
     #password=generate_password(12)
     #aws_get_policy_test("arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess")
     #reset_password("test-user-02")
-    get_last_accessed_service("arn:aws:iam::002125562743:user/test-user-02")
+    #get_last_accessed_service("arn:aws:iam::002125562743:user/test-user-02")
+    credential_report()

@@ -1,0 +1,6 @@
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NTYzNDk3MCwianRpIjoiOWViZjM2YTQtODQ3NS00ODkzLTkwODktMTJmZTcxODk3NjhkIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6ImFkbWluIiwibmJmIjoxNzY1NjM0OTcwLCJjc3JmIjoiODJmZjY1MWUtNTIwNC00MTk4LTlhMjAtNWY1ZTYzOWUxZGQzIiwiZXhwIjoxNzY1NjM4NTcwLCJyb2xlIjoiYWRtaW4iLCJsb2dpbl9tZXRob2QiOiJkZW1vIn0.38zVv4H0gTxSWsNxA3z2MAO1nV4H_PfALmlE7T-yS7A",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "username": "admin"
+}
