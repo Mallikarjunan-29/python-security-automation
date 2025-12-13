@@ -16,6 +16,7 @@ from ai_projects import day2_threatintel
 from src.rate_limiter import GeminiRateLimiter
 from src import logger_config
 from src.logger_config import get_logger
+from flask import g
 logger=get_logger(__name__)
 import hashlib
 from src.ioc_extractor import extract_ioc,extract_behavior
@@ -25,8 +26,11 @@ from src import ai_response_handler
 from src.ai_response_handler import AI_response_handler
 cache_lock=Lock()
 
-def build_prompt(alert,ip_response,url_response,domain_response,human_override,behaviour):
-    logger.debug("Prompt Building Started")
+def build_prompt(alert,ip_response,url_response,domain_response,human_override,behaviour,context):
+    logger.debug("Prompt Building Started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     """
     Takes Alert dictionary and builds a prompt
     """
@@ -99,23 +103,32 @@ OUTPUT_SCHEMA:
   "semantic": "title Mitre"
 }}
 """
-    logger.debug("Prompt Building ended")
+    logger.debug("Prompt Building ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     return prompt
 
-def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
+def classify_alert(alert,ti_cache_data,ai_cache_data,timing,context,max_retries=3):
     """
     Alert -> Threat Intel -> Cache -> AI -> classification
     """
     try:
         """Including a porttion to extract IOCs"""
-        logger.debug("calling IOC extractor")
+        logger.debug("calling IOC extractor",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
         if isinstance(alert, dict):
             alert_text=json.dumps(alert)
         else:
             alert_text=alert
             
-        ioc=extract_ioc(str(alert_text))
-        logger.debug("Extracting IOCs finished")
+        ioc=extract_ioc(str(alert_text),context)
+        logger.debug("Extracting IOCs finished",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })   
         
         ip_response={}
         url_response={}
@@ -125,14 +138,20 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
             "urls":process_url,
             "domains":process_domain
         }
-        logger.debug("Calling thread pool")
+        logger.debug("Calling thread pool",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         with ThreadPoolExecutor(max_workers=6) as exe:
             futures=[]
             for categories,values in ioc.items():
                 func=handlers[categories]
                 for value in values:
-                   futures.append( exe.submit(func,value,ti_cache_data,timing))
-            logger.debug("Calling completed futures")
+                   futures.append( exe.submit(func,value,ti_cache_data,timing,context))
+            logger.debug("Calling completed futures",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             for future in as_completed(futures):
                 out=future.result()
                 if out['category']=='ips':
@@ -141,8 +160,14 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
                     url_response.update({out['value']:out['result']})
                 elif  out['category']=='domains':
                     domain_response.update({out['value']:out['result']})
-            logger.debug("Completed futures processed")
-        logger.debug("Thread pool ended")
+            logger.debug("Completed futures processed",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+        logger.debug("Thread pool ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
                 
                 
         #Query Text and Caching logic
@@ -161,18 +186,21 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
         """
         #Loading AI response checker - Needs change. It will be IOC instead of alert
         
-        response_key=generate_cache_key(ip_response,url_response,domain_response,ioc,alert)
+        response_key=generate_cache_key(ip_response,url_response,domain_response,ioc,alert,context)
         response_to_check=ai_cache_data.get(response_key,"") if ai_cache_data else ""
         if response_to_check != "":
             ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
             if ai_cache_data[response_key]['AI_Response']['classification']!=ai_cache_data[response_key]['Humanoverride']:
                 start_time=time.time()
                 human_override=ai_cache_data[response_key]['Humanoverride']
-                ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override)
+                ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override)
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
             else:
-                logger.debug("Loading AI Response from cache started")
+                logger.debug("Loading AI Response from cache started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
                 start_time=time.time()
                 ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
                 ai_response=ai_cache_data[response_key]['AI_Response']
@@ -190,19 +218,28 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,max_retries=3):
                         "ThoughtsToken":0
                     }
                 
-                logger.debug("Loading AI Response from cache ended")
+                logger.debug("Loading AI Response from cache ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         else:
             human_override=""
-            ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override)
+            ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override)
             timing.update({"AI_FromCache":0})   
         return ai_response,token_data,response_key 
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })     
 
 
-def ai_content_generate(ai_prompt,max_retries=3):
+def ai_content_generate(ai_prompt,context,max_retries=3):
     gemini_rate_limiter=GeminiRateLimiter()
-    logger.debug("AI Content Generated Started")
+    logger.debug("AI Content Generated Started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     for retries in range(max_retries):
         try:
             gemini_rate_limiter.wait_if_needed()
@@ -219,18 +256,27 @@ def ai_content_generate(ai_prompt,max_retries=3):
                 "CacheToken":getattr(response.usage_metadata,"cache_token_count",0),
                 "ThoughtsToken":getattr(response.usage_metadata,"thoughts_token_count",0)
             }
-            logger.debug("AI Content Generated ended")
+            logger.debug("AI Content Generated ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             return response.text,token_data
         except Exception as e:
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })     
             if e.code==429 or e.code == 503:
                 time.sleep(2**retries)
                 continue
             return None
 
 
-def parse_alert_json(ai_output):
-    logger.debug("AI output parsing started")
+def parse_alert_json(ai_output,context):
+    logger.debug("AI output parsing started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     """
     Parse the results of AI output to format a clean Output
     """
@@ -239,63 +285,111 @@ def parse_alert_json(ai_output):
         if json_output:
             result=json_output.group()
             result_json=json.loads(result)
-            logger.debug("AI output parsing ended")
+            logger.debug("AI output parsing ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             return result_json
         else:
-            logger.error("No Json to parse")
+            logger.error("No Json to parse",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             return None   
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })      
         return None
 
-def calculate_cost(token):
-    logger.debug("Calculating Cost started")
+def calculate_cost(token,context):
+    logger.debug("Calculating Cost started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     try:
         prompt_token_cost=1 #$ per 1M tokens
         output_token_cost=10 #$ per 1M tokens
         total_cost=prompt_token_cost*token["PromptToken"]/1_000_000 + output_token_cost*token["CandidateToken"]/1_000_000
-        logger.debug("Calculating Cost ended")
+        logger.debug("Calculating Cost ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         return total_cost
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })      
         return None
 
-def cache_ip(file_path,data):
-    logger.debug(f"Caching ip {data['IP']}")
+def cache_ip(file_path,data,context):
+    logger.debug(f"Caching ip {data['IP']}",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     try:
         with open (file_path,"w") as f:
             json.dump(data,f,indent=4)           
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })      
 
-def load_cache(file_path):
-    logger.debug("Cache loading started")
+def load_cache(file_path,context):
+    logger.debug("Cache loading started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     try:
         with open(file_path,"r") as f:
            data= json.load(f)
-           logger.debug("Cache loading ended")
+           logger.debug("Cache loading ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         return data
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })      
 
-def prune_old_cache(cache_dump):
-    logger.debug("Pruning old cache")
+def prune_old_cache(cache_dump,context):
+    logger.debug("Pruning old cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     ttl=3600
     try:
         listofkeys=list(cache_dump.keys())
         prunecount=0
         for keys in listofkeys:
-            logger.debug(f"Checking {keys} for pruning ")
+            logger.debug(f"Checking {keys} for pruning ",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             timestamp=cache_dump[keys].get("Timestamp","")
             timediff=datetime.now()-datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S")
             if timediff>timedelta(seconds=ttl):
                 cache_dump.pop(keys)
                 prunecount+=1
-        logger.debug(f"Pruned item count: {prunecount}")
-        logger.debug("Pruning of cache ended")
+        logger.debug(f"Pruned item count: {prunecount}",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+        logger.debug("Pruning of cache ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         return cache_dump
     except Exception as e:
-        logger.error(e)
+        logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })      
         return None
 # Ip Caching
 def update_ti_cache(ti_cache_data,timing,ip_to_check):
@@ -314,8 +408,11 @@ def update_ti_cache(ti_cache_data,timing,ip_to_check):
     return abuse_response,vt_response
 
 #URL Caching
-def update_url_cache(ti_cache_data,timing,url):
-    logger.debug("Updating url cache")
+def update_url_cache(ti_cache_data,timing,url,context):
+    logger.debug("Updating url cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     start_time=time.time()
     vt_response,url_haus_response=day2_threatintel.url_lookup(url)
     end_time=time.time()-start_time
@@ -345,20 +442,29 @@ def update_domain_cache(ti_cache_data,timing,domain):
     ti_cache_data.update({domain:data_to_cache})
     return vt_response
 
-def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,human_override=""):
+def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override=""):
     for attempts in range(max_retries):
         try:
-            logger.debug("Building Prompt for the alert")
+            logger.debug("Building Prompt for the alert",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             start_time=time.time()
-            ai_prompt=build_prompt(alert,ip_response,url_response,domain_response,human_override,extract_behavior(alert))
-            logger.debug("Generating AI response")                
-            ai_response,token_data=    ai_content_generate(ai_prompt)
+            ai_prompt=build_prompt(alert,ip_response,url_response,domain_response,human_override,extract_behavior(alert),context)
+            logger.debug("Generating AI response",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })                
+            ai_response,token_data=    ai_content_generate(ai_prompt,context)
             end_time=time.time()-start_time
             timing.update({"AI_ContentGenerate":end_time})
-            logger.debug("Parsing AI output")
+            logger.debug("Parsing AI output",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             start_time=time.time()                
             if ai_response:
-                ai_output=parse_alert_json(ai_response)
+                ai_output=parse_alert_json(ai_response,context)
             else:
                 ai_output="No AI Response"
             end_time=time.time()-start_time
@@ -378,12 +484,18 @@ def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,t
                 print(f"Attempt {attempts + 1} failed: {e}. Retrying...")
                 time.sleep(2**attempts)
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             return None
 
 
-def process_ip(ip,ti_cache_data,timing):
-    logger.debug("Calling Process IPs")
+def process_ip(ip,ti_cache_data,timing,context):
+    logger.debug("Calling Process IPs",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     ip_to_check=ip
     itemtocheck=ti_cache_data.get(ip_to_check,0)
     
@@ -395,7 +507,10 @@ def process_ip(ip,ti_cache_data,timing):
         abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
         timing.update({"TI_FromCache":0})
     else:
-        logger.debug("Loading TI Response from cache started")
+        logger.debug("Loading TI Response from cache started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         start_time=time.time()
         abuse_response=ti_cache_data[ip_to_check]['AbuseIntel']
         vt_response=ti_cache_data[ip_to_check]['VTIntel'] 
@@ -403,7 +518,10 @@ def process_ip(ip,ti_cache_data,timing):
         timing.update({"TI_FromCache":end_time})
         with cache_lock:
             ti_cache_data[ip_to_check]['IPCacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended")
+        logger.debug("Loading TI Response from cache ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     process_ip_response={
         "category":"ips",
         "value":ip,
@@ -412,7 +530,10 @@ def process_ip(ip,ti_cache_data,timing):
                 "IP_VT_Intel":vt_response
         }
     }
-    logger.debug("returning Process IPs")
+    logger.debug("returning Process IPs",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     return process_ip_response
 
 
@@ -420,19 +541,25 @@ def process_ip(ip,ti_cache_data,timing):
 
 
 # Process URLs from/to cache
-def process_url(url,ti_cache_data,timing):
-    logger.debug("Calling Process urls")
+def process_url(url,ti_cache_data,timing,context):
+    logger.debug("Calling Process urls",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     url_to_check=url
     itemtocheck=ti_cache_data.get(url_to_check,0)
     # Loading TI cache data based on conditions
     if not ti_cache_data:
-        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check)
+        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     elif itemtocheck==0:
-        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check)
+        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     else:
-        logger.debug("Loading TI Response from cache started")
+        logger.debug("Loading TI Response from cache started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         start_time=time.time()
         url_hause_response=ti_cache_data[url_to_check]['URLHauseIntel']
         vt_url_response=ti_cache_data[url_to_check]['VTURLIntel'] 
@@ -440,7 +567,10 @@ def process_url(url,ti_cache_data,timing):
         timing.update({"TI_FromCache":end_time})
         with cache_lock:
             ti_cache_data[url_to_check]['URLCacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended")  
+        logger.debug("Loading TI Response from cache ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     process_url_response={
         "category":"urls",
         "value":url,
@@ -449,13 +579,19 @@ def process_url(url,ti_cache_data,timing):
                 "vt_URL_response":vt_url_response
         }
     }
-    logger.debug("returning Process urls")
+    logger.debug("returning Process urls",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     return process_url_response
     
 
 # Process domains from/to cache
-def process_domain(domain,ti_cache_data,timing):
-    logger.debug("Calling Process domains")
+def process_domain(domain,ti_cache_data,timing,context):
+    logger.debug("Calling Process domains",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     url_to_check=domain
     itemtocheck=ti_cache_data.get(url_to_check,0)   
 
@@ -467,14 +603,20 @@ def process_domain(domain,ti_cache_data,timing):
         vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check)
         timing.update({"TI_FromCache":0})
     else:
-        logger.debug("Loading TI Response from cache started")
+        logger.debug("Loading TI Response from cache started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         start_time=time.time()
         vt_domain_response=ti_cache_data[url_to_check]['VTDomainIntel'] 
         end_time=time.time()-start_time
         timing.update({"TI_FromCache":end_time})
         with cache_lock:
             ti_cache_data[url_to_check]['DomainCacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended")
+        logger.debug("Loading TI Response from cache ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     process_domain_response={
         "category":"domains",
         "value":domain,
@@ -482,13 +624,19 @@ def process_domain(domain,ti_cache_data,timing):
             "VT_domain_response":vt_domain_response
         }
     }   
-    logger.debug("returning Process domains")
+    logger.debug("returning Process domains",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     return process_domain_response
 
 
-def generate_cache_key(ip_response,url_response,domain_response,ioc,alert):
+def generate_cache_key(ip_response,url_response,domain_response,ioc,alert,context):
     try:
-        logger.debug("Cache Key generated started")
+        logger.debug("Cache Key generated started",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         malicious_ip=[
                         data.get('IP_Abuse_intel',0).get('IP',0) for data in ip_response.values()
                         if data.get('IP_Abuse_intel') and data.get('IP_Abuse_intel',0).get('AbuseConfidenceScore',0) > 50
@@ -522,11 +670,20 @@ def generate_cache_key(ip_response,url_response,domain_response,ioc,alert):
                 "behaviour":extract_behavior(alert)
             }
         cache_key=hashlib.md5(json.dumps(normalized_alert,sort_keys=True).encode()).hexdigest()
-        logger.debug("Cache Key generated ended")
+        logger.debug("Cache Key generated ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         return cache_key
     except Exception as e:
-        logger.error(str(e))
-        logger.debug("Error in cache key generation")
+        logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+        logger.debug("Error in cache key generation",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
         return None
 
 if __name__=="__main__":

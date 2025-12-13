@@ -5,6 +5,7 @@ import hashlib
 import json
 from datetime import datetime
 sys.path.append(os.getcwd())
+from flask import g
 from src.logger_config import get_logger
 from src.ioc_extractor import extract_behavior
 from ai_projects.week2_rag import day3_document_loader
@@ -137,7 +138,10 @@ class AI_response_handler:
             parts.append(f"ioc_fp:{ioc_fp}")
             return "|".join(parts)
         except Exception as e:
-            logger.error(str(e))
+            logger.error(str(e),extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
     def search(self, query_text, number_of_results=3):
@@ -157,7 +161,10 @@ class AI_response_handler:
             return result
                 
         except Exception as e:
-            logger.error(f"Metadata filtering error: {e}")
+            logger.error(f"Metadata filtering error: {e}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 # Continue to semantic fallback
         
        
@@ -167,7 +174,10 @@ class AI_response_handler:
         Debug logging for search results
         """
         if not result['documents'] or len(result['documents'][0]) == 0:
-            logger.warning(f"❌ No results for: {query_text}")
+            logger.warning(f"❌ No results for: {query_text}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return
         
         print(f"\n{'='*60}")
@@ -191,7 +201,10 @@ class AI_response_handler:
             print(f"    Preview: {preview}...")
 
     def search1(self,ioc,ip_response,url_response,domain_response,alert,similarity_threshold=0.8):
-        logger.debug("Searching cache")
+        logger.debug("Searching cache",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
         try:
 
             query_text=self.create_query_text(ioc,ip_response,url_response,domain_response,alert)
@@ -251,22 +264,37 @@ class AI_response_handler:
                     },cached_data['token_usage']
             
             print("Cache miss")
-            logger.debug("leaving search cache")
+            logger.debug("leaving search cache",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None,None
         except Exception as e:
-            logger.error(str(e))
+            logger.error(str(e),extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
 
-    def store_cache(self,chromadata):
+    def store_cache(self,chromadata,context):
         try:       
-            logger.debug("Storing runbooks in chromadb")
+            logger.debug("Storing runbooks in chromadb",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })    
             self.collection.add(
                 documents=chromadata['documents'],
                 ids=chromadata['ids'],
                 metadatas=chromadata['metadatas']
             )
-            logger.debug("Runbooks stored in chromadb")
+            logger.debug("Runbooks stored in chromadb",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })        
         except Exception as e:
-            logger.error("Error saving data to chromadb")
+            logger.error("Error saving data to chromadb",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })        
             
         
         

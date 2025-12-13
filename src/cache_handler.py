@@ -1,4 +1,5 @@
 from datetime import datetime,timedelta
+from flask import g
 import json
 import os
 import sys
@@ -12,11 +13,17 @@ class CacheHandler:
 
 
     def write_cache(self,data,path):
-        logger.debug(f"Caching intel")
+        logger.debug(f"Caching intel",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    }    )
         try:
             with open (path,"w") as f:
                 json.dump(data,f,indent=4)  
-                logger.debug(f"cached to {path}")         
+                logger.debug(f"cached to {path}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })             
         except Exception as e:
             logger.error(e)    
 
@@ -29,7 +36,10 @@ class CacheHandler:
             logger.error(e)
 
     def prune_old_cache(self,cache_dump):
-        logger.debug("Pruning old cache")
+        logger.debug("Pruning old cache",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
         try:
             listofkeys=list(cache_dump.keys())
             prunecount=0
@@ -40,7 +50,10 @@ class CacheHandler:
                 if timediff>timedelta(seconds=self.TTL):
                     cache_dump.pop(keys)
                     prunecount+=1
-            logger.debug(f"Pruned item count: {prunecount}")
+            logger.debug(f"Pruned item count: {prunecount}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return cache_dump
         except Exception as e:
             logger.error(e)

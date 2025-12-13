@@ -1,4 +1,5 @@
-from flask import Flask,jsonify,request,url_for,redirect
+from flask import Flask,jsonify,request,url_for,redirect,g
+import uuid
 from authlib.integrations.flask_client import OAuth
 from flask_jwt_extended import JWTManager,create_access_token,jwt_required,get_jwt_identity
 from flask_jwt_extended.exceptions import NoAuthorizationError
@@ -8,7 +9,8 @@ import time
 import json
 from datetime import datetime,timedelta
 sys.path.append(os.getcwd())
-from src import hive_integration 
+from src import hive_integration
+from src.middleware.logging_middleware import add_logging_context 
 from ai_projects.batch_processor import test_function
 from src.ioc_extractor import extract_behavior
 from src.logger_config import get_logger
@@ -49,6 +51,29 @@ def missing_token_callback(error):
         "error": "Authorization required",
         "message": "Request does not contain a valid token"
     }), 401
+@app.before_request
+def before_request():
+    add_logging_context()
+    start_timer()
+
+@app.before_request
+def start_timer():
+    g.start_time=time.time()
+
+@app.after_request
+def log_response(response):
+    duration_ms=(time.time()-g.start_time)*1000 if hasattr(g,'start_time') else 0
+    logger.info("Request completed", extra={
+        "request_id": g.request_id,
+        "user_id": g.user_id,
+        "method": request.method,
+        "path": request.path,
+        "status_code": response.status_code,
+        "duration_ms": round(duration_ms, 2),
+        "ip": request.remote_addr
+    })
+    response.headers['X-Request-ID'] = g.request_id
+    return response
 
 def format_datetime(date_time):
     try:
@@ -204,10 +229,17 @@ def demo_login():
 @jwt_required()
 def analyze():
     try:
-
-        current_user=get_jwt_identity()
-        
-        if not current_user:
+        g.user_id=get_jwt_identity()
+        context={
+            'request_id':g.request_id,
+            'user_id':g.user_id
+             
+        }
+        logger.debug("Analyze function called",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
+        if g.user_id == "anonymous":
             return jsonify({"error":"forbidden"}),403
         global last_request_info
         data=request.get_json(force=True)
@@ -217,7 +249,7 @@ def analyze():
                 "message":"Invalid or missing json"
             }
             return  jsonify(message),400
-        resultlist,total_time = test_function(data)
+        resultlist,total_time = test_function(data,context)
         resultset=[]
         if resultlist:
             for results in resultlist:
@@ -297,8 +329,8 @@ def analyze():
 
 @app.route("/batch",methods=['POST'])
 def batch_process():
-    current_user=get_jwt_identity()
-    if not current_user:
+    g.user_id=get_jwt_identity()
+    if g.user_id=="anonymous":
         return jsonify(
             {
                 "message":"Get token first"
@@ -328,7 +360,10 @@ def batch_process():
             global last_request_info
             if resultlist:
                 for results in resultlist:
-                    logger.debug(f"documenting alert {alerts}")
+                    logger.debug(f"documenting alert {alerts}",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':g.user_id
+                    })
                     true_positive+=1 if results["Classification"] =="TRUE_POSITIVE" else 0
                     false_positive+=1 if results["Classification"] =="FALSE_POSITIVE" else 0
                     needs_review+=1 if results["Classification"] =="NEEDS_REVIEW" else 0

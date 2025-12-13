@@ -9,6 +9,7 @@ from ipaddress import ip_network
 dotenv.load_dotenv()
 import sys
 sys.path.append(os.getcwd())
+from flask import g
 from src.logger_config import  get_logger
 
 logger=get_logger(__name__)
@@ -16,11 +17,17 @@ logger=get_logger(__name__)
 def abuseip_lookup(ip,maxretries=3):
     #AbuseDB IP LookUP functionality
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
-        logger.debug(f"ABUSEIPDB RESPONSE: {ip} is a private IP")
+        logger.debug(f"ABUSEIPDB RESPONSE: {ip} is a private IP",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
         return {"ip":f"{ip} is a private IP","AbuseConfidenceScore":0}
     for retries in range(maxretries):
         try:
-            logger.debug("Abuse Lookup started")
+            logger.debug("Abuse Lookup started",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             abuse_dict={}
             abuse_key=os.getenv("ABUSEIPDB") #AbuseIPDB API key
             if not abuse_key:
@@ -50,10 +57,16 @@ def abuseip_lookup(ip,maxretries=3):
                     "AbuseConfidenceScore":abuse_data.get("abuseConfidenceScore",0),
                     "IsWhiteListed":abuse_data.get("isWhitelisted",True)
                 }
-            logger.debug("Abuse Lookup ended")
+            logger.debug("Abuse Lookup ended",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return abuse_dict
         except ValueError as e:
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             print(f"API Key not found:{e}")
             return None
         except Exception as e:
@@ -61,16 +74,28 @@ def abuseip_lookup(ip,maxretries=3):
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the ip: {ip}")
+                    logger.error(f"Max retries reached for the ip: {ip}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
         
 #VT Lookup
 def vtip_lookup(ip,maxretries=3):
-    logger.debug("VT Lookup Started")
+    logger.debug("VT Lookup Started",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
-        logger.debug("VT RESPONSE: IP is a private IP")
+        logger.debug("VT RESPONSE: IP is a private IP",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
         return {"ip":f"{ip} is a private IP","Reputation":100}
     vt_dict={}
     #VT LookUP functionality
@@ -100,20 +125,32 @@ def vtip_lookup(ip,maxretries=3):
                     "UsageType":vt_rdap.get("name","")                  
                 }
             #logger.info(vt_response.text)
-            logger.debug("VT Lookup ended")
+            logger.debug("VT Lookup ended",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return vt_dict
         except ValueError as e:
             logger.error(e)
-            print(f"API Key not found:{e}")
+            print(f"API Key not found:{e}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
         except Exception as e:
             if e.response.status_code==429:
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the ip: {ip}")
+                    logger.error(f"Max retries reached for the ip: {ip}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
 def ip_lookup(ip):
@@ -123,14 +160,23 @@ def ip_lookup(ip):
 #ip_lookup('203.0.113.50')
 
 def url_lookup(url):
-    logger.debug("Url Lookup started")
+    logger.debug("Url Lookup started",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     vt_response=vt_url_response(url)
     haus_response=url_haus_response(url)
-    logger.debug("Url Lookup ended")
+    logger.debug("Url Lookup ended",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     return vt_response,haus_response
 
 def vt_url_response(url,maxretries=3):
-    logger.debug("VT URL lookup start ")
+    logger.debug("VT URL lookup start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     for retries in range(maxretries):
         try:
             vt_key=os.getenv("VTKEY")
@@ -153,34 +199,55 @@ def vt_url_response(url,maxretries=3):
             scan_results={}
             if url_scan_response.status_code==200:
                 if url_scan_response.ok:
-                    logger.debug("VT URL polling start ")
+                    logger.debug("VT URL polling start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                     results=poll_results(url_scan_response.json()['data']['links']['self'],{ "accept": "application/json","x-apikey": vt_key})
-                    logger.debug("VT URL polling end ")
+                    logger.debug("VT URL polling end ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             scan_results={
                 "url":url,
                 "stats":results['data']['attributes']['stats'],
             }
             #logger.info(vt_response.text)
-            logger.debug("VT URL lookup ended ")
+            logger.debug("VT URL lookup ended ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return scan_results
         except ValueError as e:
-            logger.error(e)
-            print(f"API Key not found:{e}")
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
+            
             return None
         except Exception as e:
             if e.response.status_code==429:
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the url: {url}")
+                    logger.error(f"Max retries reached for the url: {url}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
 
 
 def url_scan_response(url,maxretries=3):
-    logger.debug("URL scan response start ")
+    logger.debug("URL scan response start",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     for retries in range(maxretries):
         try:
             url_scan_key=os.getenv("URLSCANKEY")
@@ -200,19 +267,31 @@ def url_scan_response(url,maxretries=3):
             url_scan_response.raise_for_status() # Throws error for all codes >400
             scan_results={}
             if url_scan_response.status_code==200:
-                logger.debug("URL scan polling start ")
+                logger.debug("URL scan polling start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 results=poll_results(url_scan_response.json()['api'],{"api-key":url_scan_key})
-                logger.debug("URL scan polling end ")
+                logger.debug("URL scan polling end ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             scan_results={
                 "url":url,
                 "malicious":results['stats']['malicious'],
                 "verdicts":results['verdicts']['overall']
             }
             #logger.info(vt_response.text)
-            logger.debug("URL scan response start ")
+            logger.debug("URL scan response start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return scan_results
         except ValueError as e:
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             print(f"API Key not found:{e}")
             return None
         except Exception as e:
@@ -220,15 +299,24 @@ def url_scan_response(url,maxretries=3):
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the url: {url}")
+                    logger.error(f"Max retries reached for the url: {url}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
 
 
 def url_haus_response(url,maxretries=3):
-     logger.debug("URL haus lookup start ")
+     logger.debug("URL haus lookup start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
      for retries in range(maxretries):
         try:
             url_scan_key=os.getenv("URLHAUS")
@@ -255,34 +343,52 @@ def url_haus_response(url,maxretries=3):
                         "blacklists":url_haus_response.get("blacklists",0)
                     }
 
-                logger.debug("URL haus lookup ended ")
+                logger.debug("URL haus lookup ended ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 return haus_response    
             #logger.info(vt_response.text)
             
             
         except ValueError as e:
-            logger.error(e)
-            print(f"API Key not found:{e}")
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
+            
             return None
         except Exception as e:
             if e.response.status_code==429:
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the url: {url}")
+                    logger.error(f"Max retries reached for the url: {url}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
 def poll_results(url,headers,max_wait=60,interval=3):
-    logger.debug("polling started")
+    logger.debug("polling started",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     waited=0
     attempts=0
     while waited<max_wait:
         attempts+=1
         response=requests.get(url=url,headers=headers,timeout=10)
         if response.status_code==200:
-            logger.debug("polling ended")
+            logger.debug("polling ended",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return response.json()
         sleep_time=interval*(attempts+1)
         time.sleep(sleep_time)
@@ -291,7 +397,10 @@ def poll_results(url,headers,max_wait=60,interval=3):
 
 
 def vt_domain_response(domain,maxretries=3):
-    logger.debug("URL scan response start ")
+    logger.debug("URL scan response start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
     for retries in range(maxretries):
         try:
             vt_key=os.getenv("VTKEY")
@@ -320,20 +429,32 @@ def vt_domain_response(domain,maxretries=3):
                     "Reputation":vt_attributes.get("reputation",0)
                 }
             #logger.info(vt_response.text)
-            logger.debug("URL scan response start ")
+            logger.debug("URL scan response start ",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return vt_dict
         except ValueError as e:
             logger.error(e)
-            print(f"API Key not found:{e}")
+            print(f"API Key not found:{e}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
         except Exception as e:
             if e.response.status_code==429:
                 waittime=2**retries
                 time.sleep(waittime)
                 if retries==maxretries-1:
-                    logger.error(f"Max retries reached for the url: {domain}")
+                    logger.error(f"Max retries reached for the url: {domain}",extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
                 continue
-            logger.error(e)
+            logger.error(e,extra={
+                        'request_id':g.request_id,
+                        'user_id':g.user_id
+                    })    
             return None
 
 if __name__=="__main__":

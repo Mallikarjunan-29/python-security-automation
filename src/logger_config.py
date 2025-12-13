@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from logging.handlers import RotatingFileHandler
+from pythonjsonlogger import jsonlogger
 
 def get_logger(name):
     #Create Logger
@@ -22,7 +23,12 @@ def get_logger(name):
     ch.setLevel(logging.DEBUG)
 
     #Set Formmater for Handlers
-    formatter=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter_old=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s  %(message)s',
+                                          rename_fields={
+                                              'asctime': 'timestamp',
+                                              'levelname':'level'
+                                          })
     ch.setFormatter(formatter)
     fh.setFormatter(formatter)
 

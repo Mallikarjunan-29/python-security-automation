@@ -8,6 +8,7 @@ from src.alert_queue import queue_alert
 from src import test_data
 from ai_projects import day1_alertclassifier
 from src import logger_config
+from flask import g
 from src.cache_handler import CacheHandler
 from concurrent.futures import ThreadPoolExecutor,as_completed
 from logging import getLogger
@@ -34,7 +35,7 @@ total_timing={
     'AI_WriteCache':0
 }
 
-def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
+def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing,context):
   try:
     alert_timing={
       'TI_CacheLoad':0,
@@ -55,9 +56,12 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
     total_prompt_tokens=0
     total_completion_tokens=0
     thoughts_token_count=0
-    logger.debug("Classifying alert")
+    logger.debug("Classifying alert",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
     thread_start=time.time()
-    ai_output,token_count,response_key=day1_alertclassifier.classify_alert(alerts,alert_ti_cache_data,alert_ai_cache_data,alert_timing)
+    ai_output,token_count,response_key=day1_alertclassifier.classify_alert(alerts,alert_ti_cache_data,alert_ai_cache_data,alert_timing,context)
     #print(ai_output)
     if token_count:
         total_prompt_tokens += token_count["PromptToken"]
@@ -72,13 +76,16 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
             alert_timing.update({"CalculateCost":0})
         else:            
             start_time=time.time()
-            cost = day1_alertclassifier.calculate_cost(token_count)
+            cost = day1_alertclassifier.calculate_cost(token_count,context)
             end_time=time.time()-start_time
             alert_timing.update({"CalculateCost":end_time})
            # print(f"Token Usage: {token_count}\n")
             #print(f"Cost of this alert analysis: ${cost}\n")
     else:
-        logger.error("Token count not available\n")
+        logger.error("Token count not available\n",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
        # print("Token count not available\n")
     thread_end=time.time()-thread_start
     # ============================================================
@@ -109,10 +116,13 @@ def process_single_alert(alerts,ti_cache_data,ai_cache_data,timing):
         output.update({"runbooks":result['documents'][0][0]})
     return output
   except Exception as e:
-      logger.error(e)
+      logger.error(e,extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
 
 
-def test_function(alerts):
+def test_function(alerts,context):
     try:
         
         total_time_start=time.time()
@@ -142,44 +152,80 @@ def test_function(alerts):
         ai_cache_data={}
         #Loading TI cache
         if os.path.exists(ti_file_path):
-            logger.debug("Loading ti cache")
+            logger.debug("Loading ti cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             start_time=time.time()
             ti_cache_data=cachehandler.load_cache(ti_file_path) # Loading existing cache
             end_time=time.time()-start_time
-            logger.debug("TI cache loaded")
+            logger.debug("TI cache loaded",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             timing.update({"TI_CacheLoad":end_time})
         else:
-            logger.debug("No TI Cache to Load")
+            logger.debug("No TI Cache to Load",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             timing.update({"TI_CacheLoad":0})
         if ti_cache_data:
-            logger.debug("Pruning TI cache")
+            logger.debug("Pruning TI cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             start_time=time.time()
             ti_cache_data=cachehandler.prune_old_cache(ti_cache_data) # Pruning old cache
             end_time=time.time()-start_time
-            logger.debug("TI Cache pruned")
+            logger.debug("TI Cache pruned",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             timing.update({"TI_CachePrune":end_time})
         else:
-            logger.debug("No TI Cache to prune")
+            logger.debug("No TI Cache to prune",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             timing.update({"TI_CachePrune":0})
         if os.path.exists(ai_file_path):
-            logger.debug("Loading AI cache")
+            logger.debug("Loading AI cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             start_time=time.time()
             ai_cache_data=cachehandler.load_cache(ai_file_path) # Loading existing cache
             end_time=time.time()-start_time
             timing.update({"AI_CacheLoad":end_time})
-            logger.debug("AI cache Loaded")
+            logger.debug("AI cache Loaded",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
         else:
             timing.update({"AI_CacheLoad":0})
-            logger.debug("No AI cache to load")
+            logger.debug("No AI cache to load",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
         if ai_cache_data:
-            logger.debug("Pruning AI cache")
+            logger.debug("Pruning AI cache",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             start_time=time.time()
             ai_cache_data=cachehandler.prune_old_cache(ai_cache_data) # Pruning old cache
             end_time=time.time()-start_time
             timing.update({"AI_CachePrune":end_time})
-            logger.debug("AI cache pruned")
+            logger.debug("AI cache pruned",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
         else:
-            logger.debug("No AI cache to prune")
+            logger.debug("No AI cache to prune",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
             timing.update({"AI_CachePrune":0})
         
         # ============================================================
@@ -195,22 +241,25 @@ def test_function(alerts):
         # INDEXING THE DOC INTO EPHEMERAL CLIENT
         # ------------------------------------------------------------
         
-        ai_response_handler.store_cache(chromadata)
+        ai_response_handler.store_cache(chromadata,context)
         # ============================================================
         # SECTION FOR STORING RUNBOOKS END
         # ============================================================
 
         
         #Sorting Alert Queue
-        test_alert=queue_alert(alerts)
+        test_alert=queue_alert(alerts,context)
 
         #Batch Execution
-        logger.debug("Threat Pool execution Started")
+        logger.debug("Threat Pool execution Started")    
         batch_start=time.time()
         with ThreadPoolExecutor(max_workers=3) as exe:
-            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing) for alert in test_alert]
+            future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing,context) for alert in test_alert]
         batch_end=time.time()-batch_start
-        logger.debug("Threat Pool execution ended")
+        logger.debug("Threat Pool execution ended",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
         future_list=[]
         for results in as_completed(future):
             result=results.result()
@@ -228,24 +277,24 @@ def test_function(alerts):
         
         # Writing Cache
         if ti_cache_data:
-            logger.debug("Caching TI data")
+            logger.debug("Caching TI data")    
             start_time=time.time()
             cachehandler.write_cache(ti_cache_data,ti_file_path)
             end_time=time.time()-start_time
             timing.update({"TI_WriteCache":end_time})
-            logger.debug("TI data Cached")
+            logger.debug("TI data Cached")    
         if ai_cache_data:
-            logger.debug("Caching AI data")
+            logger.debug("Caching AI data")    
             start_time=time.time()
             cachehandler.write_cache(ai_cache_data,ai_file_path)
             end_time=time.time()-start_time
             timing.update({"AI_WriteCache":end_time})
-            logger.debug("AI data cached")
+            logger.debug("AI data cached")    
         total_time=time.time()-total_time_start
         #print(f"Total run time:{total_time}")
         return future_list,total_time
     except Exception as e:
-        logger.error(e)
+        logger.error(e)    
         print(e)
 
 

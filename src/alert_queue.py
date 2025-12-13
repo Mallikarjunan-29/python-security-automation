@@ -29,9 +29,12 @@ def extract_severity(alert):
             return match.group(1)
     return None
 
-def queue_alert(alerts):
+def queue_alert(alerts,context):
     try:
-        logger.debug("Alert Queue sorting start")
+        logger.debug("Alert Queue sorting start",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })    
 
         # normalize to list
         if not isinstance(alerts, list):
@@ -56,9 +59,15 @@ def queue_alert(alerts):
         # sort by prioritylevel ascending
         normalized_alerts.sort(key=lambda x: x["prioritylevel"])
 
-        logger.debug("Alert Queue sorting ended")
+        logger.debug("Alert Queue sorting ended",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })    
         return normalized_alerts
 
     except Exception as e:
-        logger.error(f"Error in queue_alert: {e}")
+        logger.error(f"Error in queue_alert: {e}",extra={
+                'request_id':context.get('request_id'),
+                'user_id':context.get('user_id')
+            })    
         return alerts

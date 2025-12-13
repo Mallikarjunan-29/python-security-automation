@@ -5,11 +5,16 @@ import os
 import sys
 import json
 sys.path.append(os.getcwd())
+from flask import g
 from src.logger_config import get_logger
 logger=get_logger(__name__)
 
-def extract_ioc(data):
+def extract_ioc(data,context):
     #Extract IPs
+    logger.debug("Extracting IOCs",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
     ips=re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b",data)
     valid_ips=[]
     for ip in ips:
@@ -17,7 +22,10 @@ def extract_ioc(data):
             ipaddress.IPv4Address(ip)
             valid_ips.append(ip)
         except Exception as e:
-            logger.error(str(e))
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             continue
     
     #Extracting URLs
@@ -41,7 +49,10 @@ def extract_ioc(data):
                 else:
                     valid_domains.append(parsed.hostname)
         except Exception as e:
-            logger.error(str(e))
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
             continue
 
     # =============================================================
@@ -51,7 +62,7 @@ def extract_ioc(data):
     for domain in domains:
         if domains in valid_domains:
             continue
-        if is_likely_false_positive(domain):
+        if is_likely_false_positive(domain,context):
             continue
         valid_domains.append(domain)
     
@@ -64,8 +75,11 @@ def extract_ioc(data):
     }
     return ioc
 
-def is_likely_false_positive(domain=str):
-    logger.debug("Checking false domains")
+def is_likely_false_positive(domain:str,context):
+    logger.debug("Checking false domains",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     try:
         file_extensions=[
             '.exe', '.dll', '.sys', '.bat', '.cmd', '.ps1', 
@@ -74,9 +88,15 @@ def is_likely_false_positive(domain=str):
         ]
         if any(domain.endswith(ext) for ext in file_extensions):
             return True
-        logger.debug("False domain check complete")
+        logger.debug("False domain check complete",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
     except Exception as e:
-        logger.error(str(e))
+        logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
 
 def extract_behavior(alert_text: str) -> str:
     """
