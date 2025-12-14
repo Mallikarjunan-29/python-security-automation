@@ -14,19 +14,19 @@ from src.logger_config import  get_logger
 
 logger=get_logger(__name__)
 
-def abuseip_lookup(ip,maxretries=3):
+def abuseip_lookup(ip,context,maxretries=3):
     #AbuseDB IP LookUP functionality
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
         logger.debug(f"ABUSEIPDB RESPONSE: {ip} is a private IP",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
         return {"ip":f"{ip} is a private IP","AbuseConfidenceScore":0}
     for retries in range(maxretries):
         try:
             logger.debug("Abuse Lookup started",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             abuse_dict={}
             abuse_key=os.getenv("ABUSEIPDB") #AbuseIPDB API key
@@ -58,16 +58,15 @@ def abuseip_lookup(ip,maxretries=3):
                     "IsWhiteListed":abuse_data.get("isWhitelisted",True)
                 }
             logger.debug("Abuse Lookup ended",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return abuse_dict
         except ValueError as e:
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
-            print(f"API Key not found:{e}")
             return None
         except Exception as e:
             if e.response.status_code==429:
@@ -75,26 +74,26 @@ def abuseip_lookup(ip,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the ip: {ip}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
         
 #VT Lookup
-def vtip_lookup(ip,maxretries=3):
+def vtip_lookup(ip,context,maxretries=3):
     logger.debug("VT Lookup Started",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     if ip_address(ip) in ip_network("10.0.0.0/8") or ip_address(ip) in ip_network("172.16.0.0/12") or ip_address(ip) in ip_network("192.168.0.0/16"):
         logger.debug("VT RESPONSE: IP is a private IP",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
         return {"ip":f"{ip} is a private IP","Reputation":100}
     vt_dict={}
@@ -126,15 +125,15 @@ def vtip_lookup(ip,maxretries=3):
                 }
             #logger.info(vt_response.text)
             logger.debug("VT Lookup ended",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return vt_dict
         except ValueError as e:
             logger.error(e)
             print(f"API Key not found:{e}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
         except Exception as e:
@@ -143,39 +142,39 @@ def vtip_lookup(ip,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the ip: {ip}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
 
-def ip_lookup(ip):
-    abuse_response=abuseip_lookup(ip)
-    vt_response=vtip_lookup(ip)
+def ip_lookup(ip,context):
+    abuse_response=abuseip_lookup(ip,context)
+    vt_response=vtip_lookup(ip,context)
     return abuse_response,vt_response
 #ip_lookup('203.0.113.50')
 
-def url_lookup(url):
+def url_lookup(url,context):
     logger.debug("Url Lookup started",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
-    vt_response=vt_url_response(url)
-    haus_response=url_haus_response(url)
+    vt_response=vt_url_response(url,context)
+    haus_response=url_haus_response(url,context)
     logger.debug("Url Lookup ended",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     return vt_response,haus_response
 
-def vt_url_response(url,maxretries=3):
+def vt_url_response(url,context,maxretries=3):
     logger.debug("VT URL lookup start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     for retries in range(maxretries):
         try:
@@ -200,13 +199,13 @@ def vt_url_response(url,maxretries=3):
             if url_scan_response.status_code==200:
                 if url_scan_response.ok:
                     logger.debug("VT URL polling start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
-                    results=poll_results(url_scan_response.json()['data']['links']['self'],{ "accept": "application/json","x-apikey": vt_key})
+                    results=poll_results(url_scan_response.json()['data']['links']['self'],context,{ "accept": "application/json","x-apikey": vt_key})
                     logger.debug("VT URL polling end ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             scan_results={
                 "url":url,
@@ -214,14 +213,14 @@ def vt_url_response(url,maxretries=3):
             }
             #logger.info(vt_response.text)
             logger.debug("VT URL lookup ended ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return scan_results
         except ValueError as e:
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             
             return None
@@ -231,22 +230,22 @@ def vt_url_response(url,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the url: {url}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
 
 
 
-def url_scan_response(url,maxretries=3):
+def url_scan_response(url,context,maxretries=3):
     logger.debug("URL scan response start",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     for retries in range(maxretries):
         try:
@@ -268,13 +267,13 @@ def url_scan_response(url,maxretries=3):
             scan_results={}
             if url_scan_response.status_code==200:
                 logger.debug("URL scan polling start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
-                results=poll_results(url_scan_response.json()['api'],{"api-key":url_scan_key})
+                results=poll_results(url_scan_response.json()['api'],context,{"api-key":url_scan_key})
                 logger.debug("URL scan polling end ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             scan_results={
                 "url":url,
@@ -283,14 +282,14 @@ def url_scan_response(url,maxretries=3):
             }
             #logger.info(vt_response.text)
             logger.debug("URL scan response start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return scan_results
         except ValueError as e:
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             print(f"API Key not found:{e}")
             return None
@@ -300,22 +299,22 @@ def url_scan_response(url,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the url: {url}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
 
 
 
-def url_haus_response(url,maxretries=3):
+def url_haus_response(url,context,maxretries=3):
      logger.debug("URL haus lookup start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
      for retries in range(maxretries):
         try:
@@ -344,17 +343,17 @@ def url_haus_response(url,maxretries=3):
                     }
 
                 logger.debug("URL haus lookup ended ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 return haus_response    
             #logger.info(vt_response.text)
             
             
         except ValueError as e:
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             
             return None
@@ -364,20 +363,20 @@ def url_haus_response(url,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the url: {url}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
 
-def poll_results(url,headers,max_wait=60,interval=3):
+def poll_results(url,context,headers,max_wait=60,interval=3):
     logger.debug("polling started",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     waited=0
     attempts=0
@@ -386,8 +385,8 @@ def poll_results(url,headers,max_wait=60,interval=3):
         response=requests.get(url=url,headers=headers,timeout=10)
         if response.status_code==200:
             logger.debug("polling ended",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return response.json()
         sleep_time=interval*(attempts+1)
@@ -396,10 +395,10 @@ def poll_results(url,headers,max_wait=60,interval=3):
 
 
 
-def vt_domain_response(domain,maxretries=3):
+def vt_domain_response(domain,context,maxretries=3):
     logger.debug("URL scan response start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
     for retries in range(maxretries):
         try:
@@ -430,15 +429,15 @@ def vt_domain_response(domain,maxretries=3):
                 }
             #logger.info(vt_response.text)
             logger.debug("URL scan response start ",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return vt_dict
         except ValueError as e:
             logger.error(e)
-            print(f"API Key not found:{e}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            print(f"API Key not found:{str(e)}",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
         except Exception as e:
@@ -447,13 +446,13 @@ def vt_domain_response(domain,maxretries=3):
                 time.sleep(waittime)
                 if retries==maxretries-1:
                     logger.error(f"Max retries reached for the url: {domain}",extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
                 continue
-            logger.error(e,extra={
-                        'request_id':g.request_id,
-                        'user_id':g.user_id
+            logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
                     })    
             return None
 

@@ -157,7 +157,7 @@ def test_function(alerts,context):
                         'user_id':context.get('user_id')
                     })    
             start_time=time.time()
-            ti_cache_data=cachehandler.load_cache(ti_file_path) # Loading existing cache
+            ti_cache_data=cachehandler.load_cache(ti_file_path,context) # Loading existing cache
             end_time=time.time()-start_time
             logger.debug("TI cache loaded",extra={
                         'request_id':context.get('request_id'),
@@ -176,7 +176,7 @@ def test_function(alerts,context):
                         'user_id':context.get('user_id')
                     })    
             start_time=time.time()
-            ti_cache_data=cachehandler.prune_old_cache(ti_cache_data) # Pruning old cache
+            ti_cache_data=cachehandler.prune_old_cache(ti_cache_data,context) # Pruning old cache
             end_time=time.time()-start_time
             logger.debug("TI Cache pruned",extra={
                         'request_id':context.get('request_id'),
@@ -195,7 +195,7 @@ def test_function(alerts,context):
                         'user_id':context.get('user_id')
                     })    
             start_time=time.time()
-            ai_cache_data=cachehandler.load_cache(ai_file_path) # Loading existing cache
+            ai_cache_data=cachehandler.load_cache(ai_file_path,context) # Loading existing cache
             end_time=time.time()-start_time
             timing.update({"AI_CacheLoad":end_time})
             logger.debug("AI cache Loaded",extra={
@@ -214,7 +214,7 @@ def test_function(alerts,context):
                         'user_id':context.get('user_id')
                     })    
             start_time=time.time()
-            ai_cache_data=cachehandler.prune_old_cache(ai_cache_data) # Pruning old cache
+            ai_cache_data=cachehandler.prune_old_cache(ai_cache_data,context) # Pruning old cache
             end_time=time.time()-start_time
             timing.update({"AI_CachePrune":end_time})
             logger.debug("AI cache pruned",extra={
@@ -277,25 +277,40 @@ def test_function(alerts,context):
         
         # Writing Cache
         if ti_cache_data:
-            logger.debug("Caching TI data")    
+            logger.debug("Caching TI data",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })        
             start_time=time.time()
-            cachehandler.write_cache(ti_cache_data,ti_file_path)
+            cachehandler.write_cache(ti_cache_data,ti_file_path,context)
             end_time=time.time()-start_time
             timing.update({"TI_WriteCache":end_time})
-            logger.debug("TI data Cached")    
+            logger.debug("TI data Cached",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })        
         if ai_cache_data:
-            logger.debug("Caching AI data")    
+            logger.debug("Caching AI data",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })        
             start_time=time.time()
-            cachehandler.write_cache(ai_cache_data,ai_file_path)
+            cachehandler.write_cache(ai_cache_data,ai_file_path,context)
             end_time=time.time()-start_time
             timing.update({"AI_WriteCache":end_time})
-            logger.debug("AI data cached")    
+            logger.debug("AI data cached",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })        
         total_time=time.time()-total_time_start
         #print(f"Total run time:{total_time}")
         return future_list,total_time
     except Exception as e:
-        logger.error(e)    
-        print(e)
+        logger.error(str(e),extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })        
+        
 
 
 if __name__=="__main__":

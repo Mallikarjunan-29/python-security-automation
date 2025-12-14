@@ -228,7 +228,7 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,context,max_retries=
             timing.update({"AI_FromCache":0})   
         return ai_response,token_data,response_key 
     except Exception as e:
-        logger.error(e,extra={
+        logger.error(str(e),extra={
                         'request_id':context.get('request_id'),
                         'user_id':context.get('user_id')
                     })     
@@ -392,9 +392,9 @@ def prune_old_cache(cache_dump,context):
                     })      
         return None
 # Ip Caching
-def update_ti_cache(ti_cache_data,timing,ip_to_check):
+def update_ti_cache(ti_cache_data,timing,ip_to_check,context):
     start_time=time.time()
-    abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check)
+    abuse_response,vt_response=day2_threatintel.ip_lookup(ip_to_check,context)
     end_time=time.time()-start_time
     timing.update({"IPTILookup":end_time})
     data_to_cache={
@@ -414,7 +414,7 @@ def update_url_cache(ti_cache_data,timing,url,context):
                         'user_id':context.get('user_id')
                     })  
     start_time=time.time()
-    vt_response,url_haus_response=day2_threatintel.url_lookup(url)
+    vt_response,url_haus_response=day2_threatintel.url_lookup(url,context)
     end_time=time.time()-start_time
     timing.update({"URLTILookup":end_time})
     data_to_cache={
@@ -428,9 +428,9 @@ def update_url_cache(ti_cache_data,timing,url,context):
     return url_haus_response,vt_response
 
 #Domain Caching
-def update_domain_cache(ti_cache_data,timing,domain):
+def update_domain_cache(ti_cache_data,timing,domain,context):
     start_time=time.time()
-    vt_response=day2_threatintel.vt_domain_response(domain)
+    vt_response=day2_threatintel.vt_domain_response(domain,context)
     end_time=time.time()-start_time
     timing.update({"DomainTILookup":end_time})
     data_to_cache={
@@ -501,10 +501,10 @@ def process_ip(ip,ti_cache_data,timing,context):
     
     # Loading TI cache data based on conditions
     if not ti_cache_data:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
         timing.update({"TI_FromCache":0})
     elif itemtocheck==0:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check)
+        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
         timing.update({"TI_FromCache":0})
     else:
         logger.debug("Loading TI Response from cache started",extra={
@@ -597,10 +597,10 @@ def process_domain(domain,ti_cache_data,timing,context):
 
     # Loading TI cache data based on conditions
     if not ti_cache_data:
-        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check)
+        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     elif itemtocheck==0:
-        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check)
+        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     else:
         logger.debug("Loading TI Response from cache started",extra={
