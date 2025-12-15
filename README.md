@@ -140,4 +140,4 @@ A: Separation of concerns. Alert response playbooks are version-controlled YAML 
 - **Integrations**: AbuseIPDB, VirusTotal, Slack
 
 ## Contact
-![LinkedIn](linkedin.com/in/mallikarjunan-cybersecpro/)
+![LinkedIn](https://linkedin.com/in/mallikarjunan-cybersecpro/)
