@@ -3,9 +3,6 @@
 ## What It Does
 Automatically classifies security alerts using multi-source threat intelligence and AI, with enterprise authentication and full observability.
 
-## Demo
-[Insert 30-second description of what happens when you submit an alert]
-
 ## Architecture
 ![Architecture](docs/architecture.png)
 
