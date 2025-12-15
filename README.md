@@ -18,7 +18,7 @@ Automatically classifies security alerts using multi-source threat intelligence 
 - **AI classification**: Gemini with contextual reasoning
 - **Semantic search**: ChromaDB RAG for runbook retrieval
 
-### Observability (★ This is your strength)
+### Observability
 - **JSON structured logging**: Machine-parseable, ELK-ready
 - **Correlation IDs**: Every request traced end-to-end
 - **Performance tracking**: Duration logged per operation
