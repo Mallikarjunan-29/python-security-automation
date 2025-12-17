@@ -275,6 +275,29 @@ class AI_response_handler:
                         'user_id':g.user_id
                     })    
 
+    def fetch_existing_ids(self,context):
+        try:
+            logger.debug("Fetching existing ids", extra=context)
+            existing_ids=[]
+            data = self.collection.get()
+            existing_ids = set(data.get("ids", []))
+            logger.debug("Fetching existing ids done", extra=context)
+            return existing_ids
+        except Exception as e:
+            logger.error(str(e),extra=context)
+            return []
+    
+    def add_new_docs(self,collection,context):
+        logger.debug("Adding new chroma docs",extra=context)
+        try:
+            self.collection.add(
+                documents=[d[0] for d in collection],
+                ids=[d[1] for d in collection],
+                metadatas=[d[2] for d in collection]
+            )
+            logger.debug("added new chroma docs",extra=context)
+        except Exception as e:
+            logger.error(str(e),extra=context)
     def store_cache(self,chromadata,context):
         try:       
             logger.debug("Storing runbooks in chromadb",extra={

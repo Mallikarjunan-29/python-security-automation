@@ -234,14 +234,31 @@ def test_function(alerts,context):
         # ------------------------------------------------------------
         # FETCHING SECURITY DOCUMENTS FROM KB
         # ------------------------------------------------------------
-        project_root=find_project_root()
-        doc_path=os.path.join(project_root,"data/security_docs")
+        script_dir = os.path.dirname(os.path.abspath(__file__))      # ai_projects/
+        project_root = os.path.dirname(script_dir)                   # one level up → root
+        doc_path = os.path.join(project_root, "data/security_docs")  # correct path
+        logger.debug("Loading runbooks", extra=context)
         chromadata=load_all_documents(doc_path)
+        logger.debug("Loading runbooks complete", extra=context)
+
+        existing_ids= ai_response_handler.fetch_existing_ids(context)
+        
+        try:
+            logger.debug("Fetching new ids", extra=context)
+            new_docs=[
+                (doc,doc_id,meta)
+                for doc,doc_id,meta in zip(chromadata["documents"],chromadata["ids"],chromadata["metadatas"])
+                if doc_id not in existing_ids             
+            ]
+            logger.debug("Fetching new ids complete", extra=context)
+        except Exception as e:
+            logger.error(str(e),extra=context)
         # ------------------------------------------------------------
         # INDEXING THE DOC INTO EPHEMERAL CLIENT
         # ------------------------------------------------------------
-        
-        ai_response_handler.store_cache(chromadata,context)
+        if new_docs and len(new_docs)>0:
+            ai_response_handler.add_new_docs(new_docs,context)
+        #ai_response_handler.store_cache(chromadata,context)
         # ============================================================
         # SECTION FOR STORING RUNBOOKS END
         # ============================================================
@@ -251,7 +268,7 @@ def test_function(alerts,context):
         test_alert=queue_alert(alerts,context)
 
         #Batch Execution
-        logger.debug("Threat Pool execution Started")    
+        logger.debug("Threat Pool execution Started",extra=context)    
         batch_start=time.time()
         with ThreadPoolExecutor(max_workers=3) as exe:
             future=[exe.submit(process_single_alert,alert,ti_cache_data,ai_cache_data,timing,context) for alert in test_alert]

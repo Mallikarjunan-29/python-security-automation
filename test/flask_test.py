@@ -7,6 +7,8 @@ import sys
 import os
 import time
 import json
+import jwt
+import requests
 from datetime import datetime,timedelta
 sys.path.append(os.getcwd())
 from src import hive_integration
@@ -18,7 +20,7 @@ from ai_projects.soar.executor import execute_playbook
 from src.integrations.slack_integration import SlackIntegration
 logger=get_logger(__name__)
 app=Flask(__name__)
-jwt=JWTManager(app)
+flask_jwt=JWTManager(app)
 import os
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", 1)))
@@ -28,24 +30,45 @@ okta=oauth.register(
     name="okta",
     client_id=os.getenv("OKTA_CLIENT_ID"),
     client_secret=os.getenv("OKTA_SECRET"),
-    server_metadata_url=os.getenv("OKTA_ISSUER")+"/.well-known/openid-configuration",
+    server_metadata_url=f"{os.getenv('OKTA_ISSUER')}/.well-known/openid-configuration",
      client_kwargs={'scope': 'openid profile email'}
 )
-@jwt.expired_token_loader
+
+JWKS_URL=f"{os.getenv('OKTA_ISSUER')}/v1/keys"
+
+
+def verify_okta_jwt(token):
+    try:
+        jwks=  requests.get(JWKS_URL).json()
+        header=jwt.get_unverified_header(token)
+        key=next(k for k in jwks['keys'] if k['kid']==header['kid'])
+        public_key=jwt.algorithms.RSAAlgorithm.from_jwk(key)
+        payload=jwt.decode(
+            token,
+            public_key,
+            algorithms=['RS256'],
+            audience=['api://default']
+        )
+        return payload
+    except Exception as e:
+        logger.error(str(e))
+        return None
+
+@flask_jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
     return jsonify({
         "error": "Token has expired",
         "message": "Please login again"
     }), 401
 
-@jwt.invalid_token_loader
+@flask_jwt.invalid_token_loader
 def invalid_token_callback(error):
     return jsonify({
         "error": "Invalid token",
         "message": "Signature verification failed"
     }), 401
 
-@jwt.unauthorized_loader
+@flask_jwt.unauthorized_loader
 def missing_token_callback(error):
     return jsonify({
         "error": "Authorization required",
@@ -174,6 +197,40 @@ def auth_callback():
         "jwt_token": jwt_token
     }),200
 
+
+@app.route("/login/service", methods=["GET"])
+def service_login():
+    """
+    M2M login using client credentials.
+    Returns: access token
+    """
+    try:
+        token_url = f"{os.getenv('OKTA_ISSUER')}/v1/token"
+        data = {
+            "grant_type": "client_credentials",
+            "scope": "alert.read alert.write"
+        }
+        resp = requests.post(
+            token_url,
+            data=data,
+            auth=(os.getenv("OKTA_API_CLIENT"), os.getenv("OKTA_API_SECRET"))
+            
+        )
+        if resp.status_code != 200:
+            return jsonify({"error": "Failed to get token", "details": resp.text}), 401
+        
+        token_json = resp.json()
+        return jsonify({
+            "access_token": token_json["access_token"],
+            "expires_in": token_json["expires_in"],
+            "token_type": token_json["token_type"]
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 @app.route("/login/demo", methods=['POST'])
 def demo_login():
     """
@@ -223,6 +280,124 @@ def demo_login():
     except Exception as e:
         logger.error(f"Login error: {e}")
         return jsonify({"error": "Authentication failed"}), 500
+
+
+
+@app.route("/analyzealert",methods=['POST'])
+def analyze_alert():
+    try:
+        token=request.headers.get("Authorization","").replace("Bearer ","")
+        payload= verify_okta_jwt(token)
+        if not payload:
+            return jsonify({"error":"forbidden"}),403
+        g.user_id=payload.get('sub')
+        context={
+            'request_id':g.request_id,
+            'user_id':g.user_id
+             
+        }
+        logger.debug("Analyze function called",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })    
+        if g.user_id == "anonymous":
+            return jsonify({"error":"forbidden"}),403
+        global last_request_info
+        data=request.get_json(force=True)
+        if not data:
+            message={
+                "status":"error",
+                "message":"Invalid or missing json"
+            }
+            return  jsonify(message),400
+        resultlist,total_time = test_function(data,context)
+        resultset=[]
+        if resultlist:
+            for results in resultlist:
+                ti_values=[]
+                if results.get('TI_Cache',0)!=0:
+                    for values in results['TI_Cache'].values():
+                        ti_values.append(values)
+                ai_values=[]
+                if results.get('AI_Cache',0)!=0:
+                    for values in results['AI_Cache'].values():
+                        ai_values.append(values)
+                
+                data_to_add={
+                    "classification":results["Classification"],
+                    "confidence":results["Confidence"],
+                    "severity":results["AISeverity"],
+                    "reasoning":results["Reasoning"],
+                    "priority":results["Priority"],
+                    "title":results["Title"],
+                    "performance":{
+                        "processing_time":total_time,
+                        "total_cost":f"${results['TimingBreakDown']['CalculateCost']}"
+                    },
+                    "runbook":results['runbooks']
+                }
+                resultset.append(data_to_add)
+                
+            last_request_info={
+                "endpoint": "/analyze",
+                "timestamp": format_datetime(datetime.now()),
+                "alerts_processed": len(resultset),
+                "processing_time": total_time
+            }
+
+            #behaviour=extract_behavior(title)
+            # Creating case in hive
+            
+            hive_response=hive_integration.create_case(resultset[0])
+            if not hive_response:
+                hive_response={}
+            
+        
+            
+        
+            slack_data={
+                "title":f"{hive_response.get('number',0)} - {resultset[0]['title']}",
+                "classification":resultset[0]['classification'],
+                "confidence":resultset[0]['confidence'],
+                "severity":resultset[0]['severity'],
+                "reasoning":resultset[0]['reasoning'],
+                "runbook":resultset[0]['runbook'] if resultset[0]['classification'] == 'TRUE_POSITIVE' else "None"
+            }
+            logger.debug("Initiating Slack notification", extra=context)
+            slack_obj=SlackIntegration()
+            slack_obj.send_alert_notification(slack_data)
+            logger.debug("Slack notification sent", extra=context)
+
+            behaviour=resultset[0]['title']
+            if resultset[0]['classification']=="TRUE_POSITIVE":
+                logger.debug("Beginning playbook execution", extra=context)
+                if behaviour=="brute_force_auth":
+                    playbook_execution= execute_playbook(os.path.join(os.getcwd(),"data/playbooks/brute_force_mitigation.yaml"),data)
+                elif "exfil" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/data_exfiltration_response.yaml"),data)
+                elif "lateral" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/lateral_movement_containment.yaml"),data)
+                elif "powershell" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/malicious_powershell.yaml"),data)
+                elif "phishing" in behaviour:
+                    playbook_execution=execute_playbook(os.path.join(os.getcwd(),"data/playbooks/phishing_response.yaml"),data)
+                else:
+                    playbook_execution={"status":"no_matching_playbook"}
+                logger.debug("Ending playbook execution", extra=context)
+            else:
+                playbook_execution=None
+                logger.debug("No playbook execution", extra=context)
+            resultset[0]['playbook_execution']=playbook_execution
+
+            logger.debug("Returning result", extra=context)
+            return jsonify(resultset)
+        else:
+            return jsonify({"message":"No data"})
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 @app.route("/analyze",methods=['POST'])
@@ -337,6 +512,10 @@ def batch_process():
             }
         ),403
     try:
+        context={
+            'request_id':g.request_id,
+            'user_id':g.user_id
+        }
         data=request.get_json(silent=True)
         if not data:
             message={

@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - auto-net
+    depends_on:
+      auto-redis:
+        condition: service_healthy
+    
+
+
+  auto-redis:
+    image: redis:latest
+    volumes:
+      - ./data/redis_data:/data
+    restart: unless-stopped
+    networks:
+      - auto-net
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      
+
+    
+networks:
+  auto-net:
+    driver: bridge
+

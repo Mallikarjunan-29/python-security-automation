@@ -14,10 +14,11 @@ def create_case(ai_response:dict):
             "Content-Type":"application/json",
             "Authorization":f"Bearer {api_key}"
         }
+        reasoning="\n".join(ai_response['reasoning'])
         description=f"""
     Classification:{ai_response['classification']}
     Severity:{ai_response['severity']}
-    Reasoning:{"\n".join(ai_response['reasoning'])}
+    Reasoning:{reasoning}
     """
         payload={
             "title":ai_response["title"],
