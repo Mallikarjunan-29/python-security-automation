@@ -20,6 +20,7 @@ COPY --from=builder /install /usr/local
 
 COPY ai_projects /app/ai_projects/
 COPY src/ /app/src/
+COPY test/unit_tests/ /app/unit_tests/
 COPY test/flask_test.py /app/test/
 COPY data/security_docs/ /app/data/security_docs/
 COPY data/playbooks /app/data/playbooks/

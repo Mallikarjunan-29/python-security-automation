@@ -12,7 +12,9 @@ from ai_projects.week2_rag import day3_document_loader
 import chromadb
 from chromadb.config import Settings,DEFAULT_DATABASE,DEFAULT_TENANT
 logger=get_logger(__name__)
-db_path=os.path.join(os.getcwd(),"data/db")
+script_dir = os.path.dirname(os.path.abspath(__file__))      # ai_projects/
+project_root = os.path.dirname(script_dir)                  # one level up → root  
+db_path=os.path.join(project_root,"data/db")
 
 class AI_response_handler:
     def __init__(self,collection_name):

@@ -24,7 +24,7 @@ def get_logger(name):
 
     #Set Formmater for Handlers
     formatter_old=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s  %(message)s',
+    formatter = jsonlogger.JsonFormatter('%(asctime)s %(levelname)s %(name)s %(funcName)s:%(lineno)d  %(message)s',
                                           rename_fields={
                                               'asctime': 'timestamp',
                                               'levelname':'level'

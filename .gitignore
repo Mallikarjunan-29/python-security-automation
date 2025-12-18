@@ -6,6 +6,9 @@ logs/
 Roadmap/
 output/
 cache/
-db/
-test_data/
-docs/personal_docs
+docs/
+data/db/
+data/redis_data/
+data/test_data/
+aws_lambda/
+sentinel/

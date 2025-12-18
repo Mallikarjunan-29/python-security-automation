@@ -16,6 +16,7 @@ from ai_projects import day2_threatintel
 from src.rate_limiter import GeminiRateLimiter
 from src import logger_config
 from src.logger_config import get_logger
+from src.extensions.redis_client import redis_client
 from flask import g
 logger=get_logger(__name__)
 import hashlib
@@ -24,6 +25,7 @@ from concurrent.futures import ThreadPoolExecutor,as_completed
 import chromadb
 from src import ai_response_handler
 from src.ai_response_handler import AI_response_handler
+from src.middleware.redis_cache import RedisCache
 cache_lock=Lock()
 
 def build_prompt(alert,ip_response,url_response,domain_response,human_override,behaviour,context):
@@ -188,11 +190,20 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,context,max_retries=
         
         response_key=generate_cache_key(ip_response,url_response,domain_response,ioc,alert,context)
         response_to_check=ai_cache_data.get(response_key,"") if ai_cache_data else ""
-        if response_to_check != "":
-            ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
-            if ai_cache_data[response_key]['AI_Response']['classification']!=ai_cache_data[response_key]['Humanoverride']:
+        logger.debug(f"Fetching AI data from redis db for key {response_key}",extra=context)
+        redis_data=redis_client.get_ai(response_key)
+        logger.debug("Fetching AI data from redis db completed",extra=context)
+        
+        if redis_data:
+            #if response_to_check != "":
+             #   ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
+            #if ai_cache_data[response_key]['AI_Response']['classification']!=ai_cache_data[response_key]['Humanoverride']:
+            logger.debug("Checking Human override from cache",extra=context)
+            if redis_data['AI_Response']['classification']!=redis_data['Humanoverride']:
+                logger.debug("Human override mismatch ",extra=context)
                 start_time=time.time()
-                human_override=ai_cache_data[response_key]['Humanoverride']
+                #human_override=ai_cache_data[response_key]['Humanoverride']
+                human_override=redis_data['Humanoverride']
                 ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override)
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
@@ -202,11 +213,13 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,context,max_retries=
                         'user_id':context.get('user_id')
                     })  
                 start_time=time.time()
-                ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
-                ai_response=ai_cache_data[response_key]['AI_Response']
-                human_override=ai_cache_data[response_key]['Humanoverride']
-                with cache_lock:
-                    ai_cache_data[response_key]['AI_CacheHit']+=1
+                #ai_cache_data={response_key:ai_cache_data.get(response_key,"")}
+                redis_data=redis_client.get_ai(response_key)
+                ai_response=redis_data['AI_Response']
+                human_override=redis_data['Humanoverride']
+                redis_data['AI_CacheHit']+=1
+                #with cache_lock:
+                 #   ai_cache_data[response_key]['AI_CacheHit']+=1
                 end_time=time.time()-start_time
                 timing.update({"AI_FromCache":end_time})
                 token_data={
@@ -223,6 +236,7 @@ def classify_alert(alert,ti_cache_data,ai_cache_data,timing,context,max_retries=
                         'user_id':context.get('user_id')
                     })  
         else:
+            logger.debug("No Redis data",extra=context)
             human_override=""
             ai_response,token_data=  update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override)
             timing.update({"AI_FromCache":0})   
@@ -405,6 +419,9 @@ def update_ti_cache(ti_cache_data,timing,ip_to_check,context):
         "IPCacheHit":0
         }
     ti_cache_data.update({ip_to_check:data_to_cache})
+    logger.debug(f"Writing to TI for {ip_to_check} redis db",extra=context)
+    redis_client.set_ti(ip_to_check,data_to_cache)
+    logger.debug(f"Writing to TI for {ip_to_check} redis db COMPELTED",extra=context)
     return abuse_response,vt_response
 
 #URL Caching
@@ -425,6 +442,10 @@ def update_url_cache(ti_cache_data,timing,url,context):
         "URLCacheHit":0
         }
     ti_cache_data.update({url:data_to_cache})
+    
+    logger.debug(f"Writing to TI for url in redis db",extra=context)
+    redis_client.set_ti(url,data_to_cache)
+    logger.debug(f"Writing to TI for url redis db COMPELTED",extra=context)
     return url_haus_response,vt_response
 
 #Domain Caching
@@ -440,6 +461,11 @@ def update_domain_cache(ti_cache_data,timing,domain,context):
         "DomainCacheHit":0
         }
     ti_cache_data.update({domain:data_to_cache})
+    
+    logger.debug(f"Writing to TI for domain in redis db",extra=context)
+    redis_client.set_ti(domain,data_to_cache)
+    logger.debug(f"Writing to TI for domain redis db COMPELTED",extra=context)
+    
     return vt_response
 
 def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,timing,response_key,ai_cache_data,context,human_override=""):
@@ -477,6 +503,7 @@ def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,t
                 "Timestamp":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Humanoverride":human_override if human_override !="" else ""
             }
+            redis_client.set_ai(response_key,ai_data_to_cache)
             ai_cache_data.update({response_key:ai_data_to_cache})
             return ai_output,token_data
         except Exception as e:
@@ -492,49 +519,67 @@ def update_ai_cache(alert,ip_response,url_response,domain_response,max_retries,t
 
 
 def process_ip(ip,ti_cache_data,timing,context):
-    logger.debug("Calling Process IPs",extra={
-                        'request_id':context.get('request_id'),
-                        'user_id':context.get('user_id')
-                    })  
-    ip_to_check=ip
-    itemtocheck=ti_cache_data.get(ip_to_check,0)
-    
-    # Loading TI cache data based on conditions
-    if not ti_cache_data:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
-        timing.update({"TI_FromCache":0})
-    elif itemtocheck==0:
-        abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
-        timing.update({"TI_FromCache":0})
-    else:
-        logger.debug("Loading TI Response from cache started",extra={
-                        'request_id':context.get('request_id'),
-                        'user_id':context.get('user_id')
-                    })  
-        start_time=time.time()
-        abuse_response=ti_cache_data[ip_to_check]['AbuseIntel']
-        vt_response=ti_cache_data[ip_to_check]['VTIntel'] 
-        end_time=time.time()-start_time
-        timing.update({"TI_FromCache":end_time})
-        with cache_lock:
-            ti_cache_data[ip_to_check]['IPCacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended",extra={
-                        'request_id':context.get('request_id'),
-                        'user_id':context.get('user_id')
-                    })  
-    process_ip_response={
-        "category":"ips",
-        "value":ip,
-        "result":{
-                "IP_Abuse_intel":abuse_response,
-                "IP_VT_Intel":vt_response
+    try:
+        logger.debug("Calling Process IPs",extra={
+                            'request_id':context.get('request_id'),
+                            'user_id':context.get('user_id')
+                        })  
+        
+        ip_to_check=ip
+        itemtocheck=ti_cache_data.get(ip_to_check,0)
+        #Fetching from redis cache
+        logger.debug("Fetching IP Redis data",extra={
+                            'request_id':context.get('request_id'),
+                            'user_id':context.get('user_id')
+                        })  
+        
+        redis_data=redis_client.get_ti(ip_to_check)
+        if not redis_data:          
+            abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
+            timing.update({"TI_FromCache":0})
+            # Loading TI cache data based on conditions
+            """ if not ti_cache_data:
+                abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
+                timing.update({"TI_FromCache":0})
+            elif itemtocheck==0:
+                abuse_response,vt_response=update_ti_cache(ti_cache_data,timing,ip_to_check,context)
+                timing.update({"TI_FromCache":0})"""
+        else:
+            if not isinstance(redis_data,dict):
+                redis_data=json.loads(redis_data)
+        
+            logger.debug(f"Loading TI Response for IP {ip_to_check}  cache started",extra={
+                            'request_id':context.get('request_id'),
+                            'user_id':context.get('user_id')
+                        })  
+            start_time=time.time()
+            abuse_response=redis_data['AbuseIntel']
+            vt_response=redis_data['VTIntel'] 
+            end_time=time.time()-start_time
+            timing.update({"TI_FromCache":end_time})
+            redis_data['IPCacheHit']+=1
+            redis_client.set_ti(ip_to_check,redis_data)
+            #with cache_lock:
+            #   ti_cache_data[ip_to_check]['IPCacheHit']+=1        
+            logger.debug(f"Loading TI Response for IP {ip_to_check} cache ended",extra={
+                            'request_id':context.get('request_id'),
+                            'user_id':context.get('user_id')
+                        })  
+        process_ip_response={
+            "category":"ips",
+            "value":ip,
+            "result":{
+                    "IP_Abuse_intel":abuse_response,
+                    "IP_VT_Intel":vt_response
+            }
         }
-    }
-    logger.debug("returning Process IPs",extra={
-                        'request_id':context.get('request_id'),
-                        'user_id':context.get('user_id')
-                    })  
-    return process_ip_response
+        logger.debug("returning Process IPs",extra={
+                            'request_id':context.get('request_id'),
+                            'user_id':context.get('user_id')
+                        })  
+        return process_ip_response
+    except Exception as e:
+        logger.error(str(e),context)
 
 
 
@@ -549,25 +594,50 @@ def process_url(url,ti_cache_data,timing,context):
     url_to_check=url
     itemtocheck=ti_cache_data.get(url_to_check,0)
     # Loading TI cache data based on conditions
+    #Fetching from redis cache
+    logger.debug("Fetching Redis data for url",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+    
+    redis_data=redis_client.get_ti(url_to_check)
+    logger.debug("Fetching Redis data for url completed",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+    
+    if not redis_data:          
+        logger.debug("No Cache for url",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+    
+        url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check,context)
+        timing.update({"TI_FromCache":0})
+        """
     if not ti_cache_data:
         url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     elif itemtocheck==0:
         url_hause_response,vt_url_response=update_url_cache(ti_cache_data,timing,url_to_check,context)
-        timing.update({"TI_FromCache":0})
+        timing.update({"TI_FromCache":0})"""
     else:
-        logger.debug("Loading TI Response from cache started",extra={
+        if not isinstance(redis_data,dict):
+            redis_data=json.loads(redis_data)
+        logger.debug("Loading TI Response for url from cache started",extra={
                         'request_id':context.get('request_id'),
                         'user_id':context.get('user_id')
                     })  
         start_time=time.time()
-        url_hause_response=ti_cache_data[url_to_check]['URLHauseIntel']
-        vt_url_response=ti_cache_data[url_to_check]['VTURLIntel'] 
+        url_hause_response=redis_data['URLHauseIntel']
+        vt_url_response=redis_data['VTURLIntel']
+        redis_data['URLCacheHit']+=1
+        redis_client.set_ti(url_to_check,redis_data)
         end_time=time.time()-start_time
         timing.update({"TI_FromCache":end_time})
-        with cache_lock:
-            ti_cache_data[url_to_check]['URLCacheHit']+=1        
-        logger.debug("Loading TI Response from cache ended",extra={
+        #with cache_lock:
+         #   ti_cache_data[url_to_check]['URLCacheHit']+=1        
+        logger.debug("Loading TI Response for url from cache ended",extra={
                         'request_id':context.get('request_id'),
                         'user_id':context.get('user_id')
                     })  
@@ -594,25 +664,49 @@ def process_domain(domain,ti_cache_data,timing,context):
                     })  
     url_to_check=domain
     itemtocheck=ti_cache_data.get(url_to_check,0)   
-
+    logger.debug("Fetching Redis data for domain",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+    
+    redis_data=redis_client.get_ti(url_to_check)
+    logger.debug("Fetching Redis data for domain completed",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+    
+    if not redis_data:          
+        logger.debug("No Cache for url",extra={
+                        'request_id':context.get('request_id'),
+                        'user_id':context.get('user_id')
+                    })  
+        vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check,context)
+        timing.update({"TI_FromCache":0})
+    
+        """
     # Loading TI cache data based on conditions
     if not ti_cache_data:
         vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check,context)
         timing.update({"TI_FromCache":0})
     elif itemtocheck==0:
         vt_domain_response=update_domain_cache(ti_cache_data,timing,url_to_check,context)
-        timing.update({"TI_FromCache":0})
+        timing.update({"TI_FromCache":0})"""
     else:
+        if not isinstance(redis_data,dict):
+            redis_data=json.loads(redis_data)
+    
         logger.debug("Loading TI Response from cache started",extra={
                         'request_id':context.get('request_id'),
                         'user_id':context.get('user_id')
                     })  
         start_time=time.time()
-        vt_domain_response=ti_cache_data[url_to_check]['VTDomainIntel'] 
+        vt_domain_response=redis_data['VTDomainIntel'] 
         end_time=time.time()-start_time
         timing.update({"TI_FromCache":end_time})
-        with cache_lock:
-            ti_cache_data[url_to_check]['DomainCacheHit']+=1        
+        redis_data['DomainCacheHit']+=1
+        redis_client.set_ti(url_to_check,redis_data)
+        #with cache_lock:
+         #   ti_cache_data[url_to_check]['DomainCacheHit']+=1        
         logger.debug("Loading TI Response from cache ended",extra={
                         'request_id':context.get('request_id'),
                         'user_id':context.get('user_id')

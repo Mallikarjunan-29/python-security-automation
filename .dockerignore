@@ -5,6 +5,7 @@ cache/
 Dockerfile
 test/**
 !test/flask_test.py
+!test/unit_tests/
 Roadmap/
 output/
 data/test_data/
