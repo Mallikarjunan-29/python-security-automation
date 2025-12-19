@@ -18,13 +18,16 @@ from src.ioc_extractor import extract_behavior
 from src.logger_config import get_logger
 from ai_projects.soar.executor import execute_playbook
 from src.integrations.slack_integration import SlackIntegration
+from functools import wraps
+from src.extensions.redis_client import redis_client
 logger=get_logger(__name__)
 app=Flask(__name__)
-flask_jwt=JWTManager(app)
+
 import os
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", 1)))
 app.secret_key=os.getenv("FLASK_SECRET_KEY")
+flask_jwt=JWTManager(app)
 oauth=OAuth(app)
 okta=oauth.register(
     name="okta",
@@ -35,6 +38,41 @@ okta=oauth.register(
 )
 
 JWKS_URL=f"{os.getenv('OKTA_ISSUER')}/v1/keys"
+
+
+
+
+def redis_health():
+    try:
+        redis_client.ping()
+        return{
+            "status":"healthy"
+        }
+    except Exception as e:
+        return{
+            "status":"unhealthy",
+            "error":str(e)
+        }
+    
+def requires_auth(f):
+    @wraps(f)
+    def wrapper(*args,**kwargs):
+        auth=request.headers.get("Authorization","")
+        if not auth and not auth.startswith("Bearer "):
+            return jsonify({"error":"Missing Authorization header"}),401        
+        token=auth.split(" ")[1]
+        try:
+            payload= verify_okta_jwt(token)
+            if not payload:
+                return jsonify({"error":"forbidden"}),401
+        except Exception as e:
+            return jsonify({"error":"forbidden"}),401
+        g.user_id=payload.get('sub')
+        return f(*args,**kwargs)
+    return wrapper
+
+
+
 
 
 def verify_okta_jwt(token):
@@ -77,18 +115,17 @@ def missing_token_callback(error):
 @app.before_request
 def before_request():
     add_logging_context()
-    start_timer()
-
-@app.before_request
-def start_timer():
     g.start_time=time.time()
+
+
+    
 
 @app.after_request
 def log_response(response):
     duration_ms=(time.time()-g.start_time)*1000 if hasattr(g,'start_time') else 0
     logger.info("Request completed", extra={
-        "request_id": g.request_id,
-        "user_id": g.user_id,
+    "request_id": getattr(g, "request_id", "unknown"),
+    "user_id": getattr(g, "user_id", "anonymous"),
         "method": request.method,
         "path": request.path,
         "status_code": response.status_code,
@@ -284,13 +321,10 @@ def demo_login():
 
 
 @app.route("/analyzealert",methods=['POST'])
+@requires_auth
 def analyze_alert():
     try:
-        token=request.headers.get("Authorization","").replace("Bearer ","")
-        payload= verify_okta_jwt(token)
-        if not payload:
-            return jsonify({"error":"forbidden"}),403
-        g.user_id=payload.get('sub')
+        
         context={
             'request_id':g.request_id,
             'user_id':g.user_id
@@ -610,15 +644,22 @@ def healthcheck():
             status="unhealthy"
         elif offline_count>0:
             status="degraded"
+        
+        redis_status=redis_health()
+        if redis_status.get("status")=="healthy":
+            redis_status="healthy"
+        else:
+            redis_status="unhealthy"
 
         health={
             "status":status,
+            "redis_status":redis_status,
             "server_up_time":time.time()-server_up_time,
             "server_info":{
                 "started_at":server_start,
                 "current_time":format_datetime(datetime.now()),
             },
-            "cache":get_cache(),
+            #"cache":get_cache(),
             "api_data":chec_api_config(),
             "last_api_call":last_request_info
         }
@@ -631,5 +672,5 @@ def healthcheck():
         }), 500
 
     
-if __name__=="__main__":
-    app.run(debug=True,port=5000,host="0.0.0.0")
+#if __name__=="__main__":
+ #   app.run(debug=True,port=5000,host="0.0.0.0")

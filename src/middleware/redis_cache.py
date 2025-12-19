@@ -51,3 +51,6 @@ class RedisCache:
             json.dumps(value),
             ex=ttl or self.DEFAULT_TTL
         )
+    
+    def ping(self):
+        return (self.redis_ai.ping() and self.redis_ti.ping())

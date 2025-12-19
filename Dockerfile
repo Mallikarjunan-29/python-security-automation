@@ -26,8 +26,9 @@ COPY data/security_docs/ /app/data/security_docs/
 COPY data/playbooks /app/data/playbooks/
 
 
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/usr/local/bin:$PATH
 
 EXPOSE 5000
 
-CMD [ "python","test/flask_test.py" ]
+#CMD [ "python","test/flask_test.py" ]
+CMD ["gunicorn", "-w","4","-b","0.0.0.0:5000","--access-logfile","-","--error-log","-","test.flask_test:app"]

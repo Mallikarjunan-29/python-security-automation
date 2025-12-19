@@ -23,6 +23,9 @@ grpcio==1.75.1
 # Redis caching (if used)
 redis==7.1.0
 
+#gunicorn for production
+gunicorn==23.0.0
+
 # Vector DB / embeddings (lightweight)
 chromadb[grpc]==1.3.4   # installs only grpc backend, not torch
 
