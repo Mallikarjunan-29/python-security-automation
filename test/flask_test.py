@@ -650,12 +650,12 @@ def healthcheck():
         elif offline_count>0:
             status="degraded"
         
-        redis_status,redis_error=redis_health()
+        redis_status=redis_health()
         
         health={
             "status":status,
-            "redis_status":redis_status,
-            "redis_error":redis_error,
+            "redis_status":redis_status.get("status"),
+            "redis_error":redis_status.get("error"),
             "server_up_time":time.time()-server_up_time,
             "server_info":{
                 "started_at":server_start,
