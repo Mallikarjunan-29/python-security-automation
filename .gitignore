@@ -12,3 +12,4 @@ data/redis_data/
 data/test_data/
 aws_lambda/
 sentinel/
+requirements_bkp.txt
