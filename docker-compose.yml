@@ -20,21 +20,21 @@ services:
     
 
 
-  auto-redis:
-    image: redis:latest
-    volumes:
-      - ./data/redis_data:/data
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - auto-net
-    healthcheck:
-      test: ["CMD", "redis-cli","ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    command: ["redis-server", "--appendonly", "yes"]
+  #auto-redis:
+   # image: redis:latest
+    #volumes:
+     # - ./data/redis_data:/data
+    #restart: unless-stopped
+    #ports:
+     # - "6379:6379"
+    #networks:
+     # - auto-net
+    #healthcheck:
+     # test: ["CMD", "redis-cli","ping"]
+     # interval: 5s
+     # timeout: 5s
+     # retries: 10
+    #command: ["redis-server", "--appendonly", "yes"]
       
 
     
