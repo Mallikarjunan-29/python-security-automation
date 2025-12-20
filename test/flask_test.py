@@ -46,7 +46,8 @@ def redis_health():
     try:
         redis_client.ping()
         return{
-            "status":"healthy"
+            "status":"healthy",
+            "error":"none"
         }
     except Exception as e:
         return{
@@ -649,15 +650,12 @@ def healthcheck():
         elif offline_count>0:
             status="degraded"
         
-        redis_status=redis_health()
-        if redis_status.get("status")=="healthy":
-            redis_status="healthy"
-        else:
-            redis_status="unhealthy"
-
+        redis_status,redis_error=redis_health()
+        
         health={
             "status":status,
             "redis_status":redis_status,
+            "redis_error":redis_error,
             "server_up_time":time.time()-server_up_time,
             "server_info":{
                 "started_at":server_start,
