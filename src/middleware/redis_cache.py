@@ -4,10 +4,9 @@ import json
 
 class RedisCache:
     def __init__(self):
-        host = os.getenv("REDIS_HOST", "localhost")
-
-        self.redis_ti = redis.Redis(
-            host=host,
+        if os.getenv("ENV")=="development":
+            self.redis_ti = redis.Redis(
+            host="localhost",
             port=6379,
             db=0,
             decode_responses=True,
@@ -16,9 +15,8 @@ class RedisCache:
             retry_on_timeout=True,
             health_check_interval=30
         )
-
-        self.redis_ai = redis.Redis(
-            host=host,
+            self.redis_ai = redis.Redis(
+            host="localhost",
             port=6379,
             db=1,
             decode_responses=True,
@@ -27,6 +25,10 @@ class RedisCache:
             retry_on_timeout=True,
             health_check_interval=30
         )
+        else:
+            url=os.getenv("REDIS_URL")
+            self.redis_ti = redis.from_url(url,db=0,port=6379,decode_responses=True)
+            self.redis_ai = redis.from_url(url,db=1,port=6379,decode_responses=True)       
 
         self.DEFAULT_TTL = 14400  # 4 hours
 
