@@ -235,13 +235,17 @@ def auth_callback():
     }),200
 
 
-@app.route("/login/service", methods=["GET"])
+@app.route("/login/service", methods=["POST"])
 def service_login():
     """
     M2M login using client credentials.
     Returns: access token
     """
+
     try:
+        data=request.get_json()
+        clientid=data.get("clientid")
+        secret=data.get("secret")
         token_url = f"{os.getenv('OKTA_ISSUER')}/v1/token"
         data = {
             "grant_type": "client_credentials",
@@ -250,7 +254,7 @@ def service_login():
         resp = requests.post(
             token_url,
             data=data,
-            auth=(os.getenv("OKTA_API_CLIENT"), os.getenv("OKTA_API_SECRET"))
+            auth=(clientid, secret)
             
         )
         if resp.status_code != 200:
@@ -268,7 +272,7 @@ def service_login():
 
 
 
-@app.route("/login/demo", methods=['POST'])
+
 def demo_login():
     """
     Simple login for demo purposes

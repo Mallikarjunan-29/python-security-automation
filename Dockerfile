@@ -31,4 +31,4 @@ ENV PATH=/usr/local/bin:$PATH
 EXPOSE 5000
 
 #CMD [ "python","test/flask_test.py" ]
-CMD ["gunicorn", "-w","4","-b","0.0.0.0:5000","--access-logfile","-","--error-log","-","test.flask_test:app"]
+CMD ["gunicorn", "-w","4","-b","0.0.0.0:5000","--timeout","60","--access-logfile","-","--error-log","-","test.flask_test:app"]
