@@ -10,8 +10,8 @@ def get_logger(name):
     logger=logging.getLogger(name)
 
     #Create File Hander
-    current_path=os.getcwd()
-    log_path=os.path.join(current_path,"logs")
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    log_path=os.path.join(root,"data/logs")
     os.makedirs(log_path,exist_ok=True)
     log_timestamp=time.strftime("%Y-%m-%d")
     file_path=os.path.join(log_path,f"ai_log_{log_timestamp}.log")

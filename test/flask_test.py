@@ -9,6 +9,7 @@ import time
 import json
 import jwt
 import requests
+import hashlib
 from datetime import datetime,timedelta
 sys.path.append(os.getcwd())
 from src import hive_integration
@@ -113,13 +114,12 @@ def missing_token_callback(error):
         "error": "Authorization required",
         "message": "Request does not contain a valid token"
     }), 401
+
 @app.before_request
 def before_request():
     add_logging_context()
     g.start_time=time.time()
 
-
-    
 
 @app.after_request
 def log_response(response):
@@ -134,6 +134,7 @@ def log_response(response):
         "ip": request.remote_addr
     })
     response.headers['X-Request-ID'] = g.request_id
+    response.headers['X-Response-Time']=round(duration_ms,2)
     return response
 
 def format_datetime(date_time):
@@ -324,6 +325,46 @@ def demo_login():
         return jsonify({"error": "Authentication failed"}), 500
 
 
+@app.route("/submit_alert",methods=['POST'])
+@requires_auth
+def submit_alert():
+    try:
+        start_time=time.time()
+        context={
+            'request_id':g.request_id,
+            'user_id':g.user_id
+        }
+        #logger.info("Submitting alert", extra=context)
+        if g.user_id=="anonymous":
+            return jsonify({"error":"forbidden"}),403
+        global last_request_info
+        data=request.get_json(force=True)
+        job_id=hashlib.md5(json.dumps(data,sort_keys=True).encode()).hexdigest()
+        alert_data= redis_client.get_job(job_id)
+        if not alert_data:
+            logger.info(f"New alert {job_id}", extra=context)
+            data['status']='inprogress'
+            status=data['status']        
+            redis_client.set_job(job_id,data)
+        else:
+            logger.info(f"Existing alert {job_id}", extra=context)
+            status=alert_data['status']
+        last_request_info={
+                "endpoint": "/submit_alert",
+                "timestamp": format_datetime(datetime.now()),
+                "processing_time": round((time.time()-start_time)*1000,2)
+            }
+        return jsonify({
+            "jobid":job_id,
+            "status":status,
+            "responsetime":round((time.time()-start_time)*1000,2)
+        })
+    except Exception as e:
+        logger.error(f"Error Submitting alert: {e.code}: {str(e)}",extra=context)
+        if e.code==400:
+            return jsonify({"error":str(e)}),400
+        elif e.code==500:    
+            return jsonify({"error":str(e)}),500
 
 @app.route("/analyzealert",methods=['POST'])
 @requires_auth

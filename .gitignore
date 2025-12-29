@@ -8,8 +8,10 @@ output/
 cache/
 docs/
 data/db/
+data/logs/
 data/redis_data/
 data/test_data/
 aws_lambda/
 sentinel/
 requirements_bkp.txt
+docker-compose.dev.yml

@@ -10,6 +10,7 @@ Roadmap/
 output/
 data/test_data/
 data/db/
+data/logs/
 venv/
 *.pyc
 *.pyd
